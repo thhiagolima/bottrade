@@ -1815,43 +1815,47 @@ async function main(): Promise<void> {
 
   // ── Start ────────────────────────────────────────────────────────────────
 
-  await wsManager.start()
-
-  // Initial indicator calculation from historical candles
-  for (const symbol of favoritePairs) {
-    const candles = wsManager.getCandles(symbol)
-    if (candles.length >= config.candles.minForSignals) {
-      try {
-        const indicators = calculateIndicators(candles, null, cachedSettings.indicatorPeriods)
-        const priceData = wsManager.getPriceData(symbol)
-        if (priceData) {
-          const signal = generateSignal(indicators, priceData, cachedSettings)
-          const alerts = detectAlerts(signal, undefined, indicators, priceData, cachedSettings)
-          signal.alerts = alerts
-
-          const analysis: PairAnalysis = {
-            symbol,
-            candles: wsManager.getCandles(symbol).slice(-100),
-            indicators,
-            price: priceData,
-            signal,
-            lastUpdate: Date.now(),
-          }
-          state.set(symbol, analysis)
-          prevIndicators.set(symbol, indicators)
-          prevSignals.set(symbol, signal)
-          console.log(`[Server] Initial analysis for ${symbol}: ${signal.direction} (score: ${signal.confluenceScore.toFixed(1)})`)
-        }
-      } catch (err) {
-        console.error(`[Server] Error calculating initial indicators for ${symbol}:`, (err as Error).message)
-      }
-    } else {
-      console.log(`[Server] ${symbol}: only ${candles.length} candles, need ${config.candles.minForSignals} for indicators`)
-    }
-  }
-
   httpServer.listen(config.port, () => {
     logger.info({ port: config.port, clientOrigin: config.clientOrigin, pairs: favoritePairs, interval: config.candles.interval }, 'Server started')
+  })
+
+  void (async () => {
+    await wsManager.start()
+
+    // Initial indicator calculation from historical candles
+    for (const symbol of favoritePairs) {
+      const candles = wsManager.getCandles(symbol)
+      if (candles.length >= config.candles.minForSignals) {
+        try {
+          const indicators = calculateIndicators(candles, null, cachedSettings.indicatorPeriods)
+          const priceData = wsManager.getPriceData(symbol)
+          if (priceData) {
+            const signal = generateSignal(indicators, priceData, cachedSettings)
+            const alerts = detectAlerts(signal, undefined, indicators, priceData, cachedSettings)
+            signal.alerts = alerts
+
+            const analysis: PairAnalysis = {
+              symbol,
+              candles: wsManager.getCandles(symbol).slice(-100),
+              indicators,
+              price: priceData,
+              signal,
+              lastUpdate: Date.now(),
+            }
+            state.set(symbol, analysis)
+            prevIndicators.set(symbol, indicators)
+            prevSignals.set(symbol, signal)
+            console.log(`[Server] Initial analysis for ${symbol}: ${signal.direction} (score: ${signal.confluenceScore.toFixed(1)})`)
+          }
+        } catch (err) {
+          console.error(`[Server] Error calculating initial indicators for ${symbol}:`, (err as Error).message)
+        }
+      } else {
+        console.log(`[Server] ${symbol}: only ${candles.length} candles, need ${config.candles.minForSignals} for indicators`)
+      }
+    }
+  })().catch((err) => {
+    logger.error({ err }, 'Market data startup failed')
   })
 
   // Cleanup expired blacklisted tokens every hour
