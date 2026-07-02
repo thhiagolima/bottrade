@@ -72,6 +72,7 @@ export class BinanceWSManager extends EventEmitter {
 
   async start(): Promise<void> {
     await this.findWorkingUrls()
+    await this.refreshAllPairsSnapshot()
 
     // 1. Start aggregate streams for ALL pairs
     this.connectAggregateStreams()
@@ -82,6 +83,34 @@ export class BinanceWSManager extends EventEmitter {
       promises.push(this.initFavorite(symbol))
     }
     await Promise.all(promises)
+  }
+
+  private async refreshAllPairsSnapshot(): Promise<void> {
+    try {
+      const snapshot = await fetchTickerSnapshot()
+      for (const [symbol, data] of snapshot) {
+        const existing = this.allPairs.get(symbol)
+        this.allPairs.set(symbol, existing ? { ...existing, ...data } : data)
+
+        const favState = this.favorites.get(symbol)
+        if (favState) {
+          favState.priceData = {
+            ...favState.priceData,
+            price: data.price,
+            markPrice: data.markPrice,
+            change24h: data.change24h,
+            volume24h: data.volume24h,
+            fundingRate: data.fundingRate,
+          }
+        }
+      }
+      if (snapshot.size > 0) {
+        console.log(`[WS] Loaded ticker snapshot for ${snapshot.size} pairs`)
+        this.emit('all-pairs-update', this.allPairs)
+      }
+    } catch (err) {
+      console.error('[WS] Failed to load ticker snapshot:', err instanceof Error ? err.message : String(err))
+    }
   }
 
   stop(): void {
