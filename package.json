@@ -1,0 +1,21 @@
+{
+  "name": "bottrade",
+  "private": true,
+  "workspaces": [
+    "packages/shared",
+    "packages/server",
+    "packages/client"
+  ],
+  "scripts": {
+    "dev:server": "npm run dev --workspace=packages/server",
+    "dev:client": "npm run dev --workspace=packages/client",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "build": "npm run build -w packages/shared && npm run build -w packages/server && npm run build -w packages/client",
+    "start:prod": "node packages/server/dist/index.js"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0",
+    "typescript": "^5.4.0",
+    "vitest": "^3.2.4"
+  }
+}

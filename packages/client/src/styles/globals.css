@@ -1,0 +1,191 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Design Tokens — Financial Terminal ─────────────────── */
+
+:root {
+  /* Backgrounds: blue-tinted dark (TradingView/GitHub style) */
+  --color-bg: #0d1117;
+  --color-bg-elevated: #161b22;
+  --color-card: #161b22;
+  --color-card-hover: #1c2129;
+  --color-card-border: #30363d;
+  --color-card-border-hover: #484f58;
+
+  /* Text: softer than pure white */
+  --color-text: #c9d1d9;
+  --color-text-muted: #8b949e;
+  --color-text-dim: #6e7681;
+
+  /* Trading colors: professional, less saturated */
+  --color-bull: #3fb950;
+  --color-bull-dim: #238636;
+  --color-bear: #f85149;
+  --color-bear-dim: #da3633;
+  --color-warn: #d29922;
+  --color-warn-dim: #9e6a03;
+
+  /* Accent: clear blue for links/actions */
+  --color-accent: #58a6ff;
+  --color-accent-dim: #1f6feb;
+
+  /* Subtle glows */
+  --glow-bull: 0 0 8px rgba(63, 185, 80, 0.12);
+  --glow-bear: 0 0 8px rgba(248, 81, 73, 0.12);
+  --glow-accent: 0 0 8px rgba(88, 166, 255, 0.12);
+
+  --radius: 4px;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --font-display: 'Inter', -apple-system, system-ui, sans-serif;
+}
+
+:root[data-theme='light'] {
+  --color-bg: #f6f8fa;
+  --color-bg-elevated: #ffffff;
+  --color-card: #ffffff;
+  --color-card-hover: #f3f4f6;
+  --color-card-border: #d0d7de;
+  --color-card-border-hover: #afb8c1;
+  --color-text: #24292f;
+  --color-text-muted: #57606a;
+  --color-text-dim: #6e7781;
+  --color-bull: #1a7f37;
+  --color-bear: #cf222e;
+  --color-warn: #9a6700;
+  --color-accent: #0969da;
+}
+
+/* ── Base ───────────────────────────────────────────────── */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-card-border) transparent;
+}
+
+*::-webkit-scrollbar { width: 5px; height: 5px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background-color: var(--color-card-border); border-radius: 3px; }
+*::-webkit-scrollbar-thumb:hover { background-color: var(--color-card-border-hover); }
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Typography ─────────────────────────────────────────── */
+
+.font-display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.font-mono-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.95em;
+}
+
+/* ── Animations (minimal, purposeful) ──────────────────── */
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.animate-fade-in { animation: fade-in 0.2s ease-out both; }
+.animate-pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+
+/* ── Score Bar ──────────────────────────────────────────── */
+
+.score-bar-bg {
+  background: var(--color-card-border);
+}
+
+.score-bar-fill-bull {
+  background: var(--color-bull);
+}
+
+.score-bar-fill-bear {
+  background: var(--color-bear);
+}
+
+.score-bar-fill-neutral {
+  background: var(--color-text-dim);
+}
+
+/* ── Card States ────────────────────────────────────────── */
+
+.card-glow-bull { border-left: 2px solid var(--color-bull); }
+.card-glow-bear { border-left: 2px solid var(--color-bear); }
+.card-glow-warn { border-left: 2px solid var(--color-warn); }
+
+/* ── Glass (for overlays only) ──────────────────────────── */
+
+.glass {
+  background: rgba(13, 17, 23, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* ── Data table ─────────────────────────────────────────── */
+
+.data-table {
+  width: 100%;
+  font-size: 12px;
+  border-collapse: collapse;
+}
+
+.data-table th {
+  text-align: left;
+  padding: 6px 8px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-card-border);
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+  white-space: nowrap;
+}
+
+.data-table tr:hover td {
+  background: var(--color-card-hover);
+}
+
+/* ── Status dot ─────────────────────────────────────────── */
+
+.status-dot-live {
+  position: relative;
+}
+
+.status-dot-live::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: inherit;
+  animation: pulse-dot 2s ease-in-out infinite;
+  opacity: 0.4;
+}
+
+/* Remove noise overlay (too decorative for financial UI) */

@@ -1,0 +1,53 @@
+services:
+  mysql:
+    image: mysql:8
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASS}
+      MYSQL_DATABASE: ${DB_NAME:-bottrade}
+    volumes:
+      - bottrade_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  server:
+    build:
+      context: .
+      dockerfile: packages/server/Dockerfile
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      NODE_ENV: production
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASS: ${DB_PASS}
+      DB_NAME: ${DB_NAME:-bottrade}
+      CLIENT_ORIGIN: ${APP_URL}
+      APP_URL: ${APP_URL}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3001/health >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  client:
+    build:
+      context: .
+      dockerfile: packages/client/Dockerfile
+      args:
+        VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${APP_HTTP_PORT:-8088}:80"
+    depends_on:
+      server:
+        condition: service_healthy
+
+volumes:
+  bottrade_mysql_data:
