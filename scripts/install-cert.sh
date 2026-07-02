@@ -61,7 +61,12 @@ CONF
 
 ln -sfn "${NGINX_AVAILABLE}" "${NGINX_ENABLED}"
 nginx -t
-systemctl reload nginx
+systemctl enable nginx
+if systemctl is-active --quiet nginx; then
+  systemctl reload nginx
+else
+  systemctl start nginx
+fi
 
 CERT_DOMAINS=(-d "${DOMAIN}")
 if [[ "${INCLUDE_WWW}" == "1" ]]; then
