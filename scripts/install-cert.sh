@@ -19,6 +19,13 @@ if [[ "${EUID}" -ne 0 ]]; then
   exit 1
 fi
 
+if ss -tulpn | grep -qE ':(80|443)\s'; then
+  echo "Ports 80/443 are already in use. This server appears to have an existing Docker reverse proxy."
+  echo "Do not run the host Nginx certificate installer in this setup."
+  echo "Use docs/VPS_DEPLOY.md section: Existing Docker reverse proxy."
+  exit 1
+fi
+
 if ! command -v nginx >/dev/null 2>&1; then
   apt-get update
   apt-get install -y nginx

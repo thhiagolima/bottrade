@@ -1,0 +1,11 @@
+services:
+  client:
+    networks:
+      proxy:
+        aliases:
+          - bottrade-client
+
+networks:
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK}

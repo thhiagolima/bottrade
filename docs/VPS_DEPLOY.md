@@ -41,6 +41,40 @@ cd /opt/bottrade
 bash scripts/deploy-vps.sh
 ```
 
+## Existing Docker Reverse Proxy
+
+If another Docker project already owns ports `80` and `443`, do not run `scripts/install-cert.sh`.
+Use the existing proxy and connect Bottrade to the same Docker network.
+
+Find the proxy container and network:
+
+```bash
+docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Ports}}" | grep -E '0.0.0.0:80|0.0.0.0:443'
+docker inspect PROXY_CONTAINER_NAME --format '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}'
+```
+
+Start Bottrade attached to that network:
+
+```bash
+cd /opt/bottrade
+PROXY_NETWORK=REPLACE_WITH_PROXY_NETWORK \
+docker compose -f docker-compose.prod.yml -f docker-compose.proxy.yml --env-file .env.production up -d --build
+```
+
+Then configure the existing proxy:
+
+```text
+Domain: gamingbr.pro
+Forward host/upstream: bottrade-client
+Forward port: 80
+WebSocket support: enabled
+SSL: request/enable certificate for gamingbr.pro
+Force HTTPS: enabled
+```
+
+If the proxy is Nginx Proxy Manager, create a new Proxy Host with the values above.
+If it is Traefik, add the equivalent router/service labels in the proxy project.
+
 If `www.gamingbr.pro` also points to the VPS, install the certificate with:
 
 ```bash
