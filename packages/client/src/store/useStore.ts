@@ -193,9 +193,9 @@ export const useStore = create<AppState>((set, get) => ({
 
   setAllPairs: (pairs: BasicPairData[]) => {
     if (pairs.length === 0 && Object.keys(get().allPairs).length > 0) return
-    const record: Record<string, BasicPairData> = {}
+    const record: Record<string, BasicPairData> = { ...get().allPairs }
     for (const p of pairs) {
-      record[p.symbol] = p
+      record[p.symbol] = { ...(record[p.symbol] ?? {}), ...p }
     }
     set({ allPairs: record })
   },
@@ -241,10 +241,10 @@ export const useStore = create<AppState>((set, get) => ({
         tradesRecord[trade.symbol] = trade
       }
     }
-    const allPairsRecord: Record<string, BasicPairData> = {}
+    const allPairsRecord: Record<string, BasicPairData> = { ...get().allPairs }
     if (allPairs) {
       for (const p of allPairs) {
-        allPairsRecord[p.symbol] = p
+        allPairsRecord[p.symbol] = { ...(allPairsRecord[p.symbol] ?? {}), ...p }
       }
     }
     const nextFavorites = favorites ?? get().favorites

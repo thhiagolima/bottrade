@@ -33,7 +33,7 @@ export default function AppSidebar() {
   const requestedPairsFallback = useRef(false)
 
   useEffect(() => {
-    if (sidebarTab !== 'all' || Object.keys(allPairs).length > 0 || requestedPairsFallback.current) return
+    if (sidebarTab !== 'all' || Object.keys(allPairs).length >= 20 || requestedPairsFallback.current) return
     let cancelled = false
     requestedPairsFallback.current = true
     fetch('/api/pairs')
