@@ -12,19 +12,19 @@ export function useKeyboardShortcuts() {
       // Navigation: number keys select favorite pairs
       if (e.key === '1' && !e.ctrlKey && !e.metaKey) {
         const favorites = state.favorites || Object.keys(state.pairs)
-        if (favorites.length > 0) { state.selectPair(favorites[0]); state.navigateTo('dashboard') }
+        if (favorites.length > 0) { state.selectPair(favorites[0]); state.navigateTo('trade') }
       }
       if (e.key === '2' && !e.ctrlKey && !e.metaKey) {
         const favorites = state.favorites || Object.keys(state.pairs)
-        if (favorites.length > 1) { state.selectPair(favorites[1]); state.navigateTo('dashboard') }
+        if (favorites.length > 1) { state.selectPair(favorites[1]); state.navigateTo('trade') }
       }
       if (e.key === '3' && !e.ctrlKey && !e.metaKey) {
         const favorites = state.favorites || Object.keys(state.pairs)
-        if (favorites.length > 2) { state.selectPair(favorites[2]); state.navigateTo('dashboard') }
+        if (favorites.length > 2) { state.selectPair(favorites[2]); state.navigateTo('trade') }
       }
 
-      // Arrow keys to navigate pairs (only on dashboard)
-      if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && state.currentPage === 'dashboard') {
+      // Arrow keys to navigate pairs (only on analysis page)
+      if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && state.currentPage === 'trade') {
         e.preventDefault()
         const favorites = state.favorites || Object.keys(state.pairs)
         if (favorites.length === 0) return

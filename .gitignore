@@ -7,3 +7,5 @@ dist/
 .agents/
 .claude/
 .superpowers/
+wireframe/
+stitch_*.zip

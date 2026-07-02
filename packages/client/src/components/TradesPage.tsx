@@ -42,13 +42,13 @@ export default function TradesPage() {
   const navigateToPair = (symbol: string) => {
     if (favorites.includes(symbol)) {
       selectPair(symbol)
-      navigateTo('dashboard')
+      navigateTo('trade')
     } else {
       emitAnalyzePair(symbol, (analysis) => {
         if (analysis) {
           setTempAnalysis(analysis)
           selectPair(symbol)
-          navigateTo('dashboard')
+          navigateTo('trade')
         }
       })
     }

@@ -40,7 +40,7 @@ interface AppState {
   tourComplete: boolean
   adminOpen: boolean
   // Navigation
-  currentPage: 'dashboard' | 'signals' | 'trades' | 'paper' | 'backtest' | 'settings' | 'alerts' | 'admin'
+  currentPage: 'dashboard' | 'trade' | 'signals' | 'trades' | 'paper' | 'backtest' | 'settings' | 'alerts' | 'admin'
   navigateTo: (page: string) => void
   // Actions
   updatePrice: (symbol: string, price: PriceData) => void

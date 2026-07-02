@@ -11,7 +11,8 @@ interface NavItem {
 function getNavItems(userMode: UserMode, role?: string): NavItem[] {
   const items: NavItem[] = [
     { key: 'dashboard', label: 'Dashboard' },
-    { key: 'trades', label: 'Trades' },
+    { key: 'trade', label: 'Analise' },
+    { key: 'trades', label: 'Historico' },
   ]
 
   if (userMode === 'trader' || userMode === 'pro') {
@@ -86,9 +87,9 @@ export default function TopBar() {
   }, [mobileMenuOpen])
 
   return (
-    <header className="bg-card border-b border-card-border flex-shrink-0" data-topbar>
+    <header className="bg-card/80 backdrop-blur-xl border-b border-card-border flex-shrink-0" data-topbar>
       {/* Main nav row */}
-      <div className="flex items-center h-10 px-3">
+      <div className="flex items-center h-14 px-4">
         {/* Mobile hamburger */}
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -107,10 +108,10 @@ export default function TopBar() {
         {/* Logo */}
         <button
           onClick={() => navigateTo('dashboard')}
-          className="flex items-center gap-1.5 mr-4 cursor-pointer hover:opacity-80 transition-opacity"
+          className="flex items-center gap-2 mr-6 cursor-pointer hover:opacity-80 transition-opacity"
         >
-          <span className="font-display text-sm font-bold text-white">B<span className="text-accent">.</span></span>
-          <span className="hidden sm:inline text-xs text-muted">Bottrade</span>
+          <span className="font-display text-base font-black text-white">B<span className="text-bull">.</span></span>
+          <span className="hidden sm:inline text-sm font-bold tracking-tight text-white/90">Bottrade</span>
           <span
             className={`w-1.5 h-1.5 rounded-full ${serverConnected ? 'bg-bull' : 'bg-bear'} animate-pulse-dot`}
             title={serverConnected ? 'Conectado' : 'Desconectado'}
@@ -118,15 +119,15 @@ export default function TopBar() {
         </button>
 
         {/* Desktop nav links */}
-        <nav className="hidden md:flex items-center gap-0.5">
+        <nav className="hidden md:flex items-center gap-1.5">
           {navItems.map((item) => (
             <button
               key={item.key}
               onClick={() => navigateTo(item.key)}
-              className={`px-2.5 py-1 text-xs rounded cursor-pointer transition-colors ${
+              className={`px-3 py-1.5 text-xs rounded-lg cursor-pointer transition-colors font-bold ${
                 currentPage === item.key
-                  ? 'bg-card-border text-white font-medium'
-                  : 'text-muted hover:text-white hover:bg-card-hover'
+                  ? 'bg-accent/15 text-white border border-accent/30'
+                  : 'text-muted hover:text-white hover:bg-card-hover border border-transparent'
               }`}
               {...(item.key === 'trades' ? { 'data-tour': 'nav-trades' } :
                    item.key === 'paper' ? { 'data-tour': 'nav-paper' } :
