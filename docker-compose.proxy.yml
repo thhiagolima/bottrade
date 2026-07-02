@@ -1,6 +1,7 @@
 services:
   client:
     networks:
+      default:
       proxy:
         aliases:
           - bottrade-client
