@@ -110,38 +110,38 @@ function QuickSummary({ indicators, signal, price }: { indicators: IndicatorValu
   const volRatio = indicators.volume.average > 0 ? (indicators.volume.current / indicators.volume.average).toFixed(1) : '0.0'
 
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="flex flex-wrap gap-2">
       {/* MA pill */}
-      <span className={`text-[11px] px-1.5 py-0.5 rounded bg-card-border font-mono-num ${maColor}`}>
+      <span className={`rounded-lg border border-card-border bg-bg/60 px-2 py-1 text-xs font-bold font-mono-num ${maColor}`}>
         MA {aboveCount}/6 {maIcon}
       </span>
 
       {/* MACD pill */}
-      <span className={`text-[11px] px-1.5 py-0.5 rounded bg-card-border font-mono-num ${macdColor}`}>
+      <span className={`rounded-lg border border-card-border bg-bg/60 px-2 py-1 text-xs font-bold font-mono-num ${macdColor}`}>
         MACD {indicators.macd.histogram >= 0 ? '+' : ''}{indicators.macd.histogram.toFixed(2)} {macdIcon}
       </span>
 
       {/* RSI pill */}
       {indicators.rsi && (
-        <span className={`text-[11px] px-1.5 py-0.5 rounded bg-card-border font-mono-num ${rsiZoneColor}`}>
+        <span className={`rounded-lg border border-card-border bg-bg/60 px-2 py-1 text-xs font-bold font-mono-num ${rsiZoneColor}`}>
           RSI {indicators.rsi.value.toFixed(0)} {rsiIcon}
         </span>
       )}
 
       {/* StochRSI pill */}
-      <span className={`text-[11px] px-1.5 py-0.5 rounded bg-card-border font-mono-num ${stochZoneColor}`}>
+      <span className={`rounded-lg border border-card-border bg-bg/60 px-2 py-1 text-xs font-bold font-mono-num ${stochZoneColor}`}>
         StochRSI {indicators.stochRsi.k.toFixed(0)}/{indicators.stochRsi.d.toFixed(0)} {stochIcon}
       </span>
 
       {/* ADX pill */}
       {indicators.adx && (
-        <span className={`text-[11px] px-1.5 py-0.5 rounded bg-card-border font-mono-num ${indicators.adx.trending ? 'text-bull' : 'text-muted'}`}>
+        <span className={`rounded-lg border border-card-border bg-bg/60 px-2 py-1 text-xs font-bold font-mono-num ${indicators.adx.trending ? 'text-bull' : 'text-muted'}`}>
           ADX {indicators.adx.value.toFixed(0)} {adxIcon}
         </span>
       )}
 
       {/* Volume pill */}
-      <span className={`text-[11px] px-1.5 py-0.5 rounded bg-card-border font-mono-num ${indicators.volume.isSpike ? 'text-warn' : 'text-muted'}`}>
+      <span className={`rounded-lg border border-card-border bg-bg/60 px-2 py-1 text-xs font-bold font-mono-num ${indicators.volume.isSpike ? 'text-warn' : 'text-muted'}`}>
         Vol {volRatio}x
       </span>
     </div>
@@ -149,91 +149,122 @@ function QuickSummary({ indicators, signal, price }: { indicators: IndicatorValu
 }
 
 function SmartMoneyPanel({ data }: { data: SmartMoneyData }) {
+  const trendClass =
+    data.trend === 'bullish' ? 'border-bull/25 bg-bull/10 text-bull' :
+    data.trend === 'bearish' ? 'border-bear/25 bg-bear/10 text-bear' :
+    'border-warn/25 bg-warn/10 text-warn'
+  const trendLabel = data.trend === 'bullish' ? 'ALTA' : data.trend === 'bearish' ? 'BAIXA' : 'LATERAL'
+
   return (
-    <div className="space-y-2 text-xs">
-      {/* Trend */}
-      <div className="flex items-center justify-between">
-        <span className="text-muted">Estrutura</span>
-        <span className={data.trend === 'bullish' ? 'text-bull font-bold' : data.trend === 'bearish' ? 'text-bear font-bold' : 'text-muted'}>
-          {data.trend === 'bullish' ? 'ALTA' : data.trend === 'bearish' ? 'BAIXA' : 'LATERAL'}
+    <div className="space-y-3 text-xs">
+      <div className="flex flex-col gap-3 rounded-lg border border-card-border/80 bg-bg/25 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h4 className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">Estrutura Smart Money</h4>
+          <p className="mt-1 text-[11px] text-dim">Zonas recentes, quebras de estrutura e liquidez detectada.</p>
+        </div>
+        <span className={`inline-flex w-fit rounded-full border px-3 py-1 text-sm font-black ${trendClass}`}>
+          {trendLabel}
         </span>
       </div>
 
-      {/* BOS/CHoCH */}
       {data.structureBreaks.length > 0 && (
-        <div className="space-y-1">
+        <section className="rounded-lg border border-card-border/80 bg-bg/25 p-3">
+          <h4 className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted">BOS / CHoCH</h4>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {data.structureBreaks.map((sb, i) => (
-            <div key={i} className="flex items-center justify-between">
-              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                sb.type === 'CHoCH' ? 'bg-accent/20 text-accent' : 'bg-card-border text-muted'
+            <div key={i} className="rounded-md border border-card-border/70 bg-card/55 p-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                  sb.type === 'CHoCH' ? 'bg-accent/15 text-accent' : 'bg-card-border/70 text-muted'
               }`}>{sb.type}</span>
-              <span className={`font-mono-num ${sb.direction === 'bullish' ? 'text-bull' : 'text-bear'}`}>
-                {sb.level.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-              </span>
+                <span className={`text-[10px] font-bold uppercase ${sb.direction === 'bullish' ? 'text-bull' : 'text-bear'}`}>
+                  {sb.direction === 'bullish' ? 'Bullish' : 'Bearish'}
+                </span>
+              </div>
+              <div className="mt-2 font-mono-num text-sm font-bold text-white">{formatPrice(sb.level)}</div>
             </div>
           ))}
+          </div>
+        </section>
+      )}
+
+      {(data.fvgs.length > 0 || data.orderBlocks.length > 0) && (
+        <div className="grid gap-3 lg:grid-cols-2">
+          {data.fvgs.length > 0 && (
+            <section className="rounded-lg border border-card-border/80 bg-bg/25 p-3">
+              <h4 className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted">Fair Value Gaps</h4>
+              <div className="space-y-2">
+                {data.fvgs.map((fvg, i) => (
+                  <div key={i} className="flex items-center justify-between gap-3 rounded-md border border-card-border/70 bg-card/55 px-3 py-2">
+                    <span className={`font-bold ${fvg.type === 'bullish' ? 'text-bull' : 'text-bear'}`}>
+                      {fvg.type === 'bullish' ? 'Bullish' : 'Bearish'}
+                    </span>
+                    <span className="text-right font-mono-num text-white">{formatPrice(fvg.bottom)} - {formatPrice(fvg.top)}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {data.orderBlocks.length > 0 && (
+            <section className="rounded-lg border border-card-border/80 bg-bg/25 p-3">
+              <h4 className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted">Order Blocks</h4>
+              <div className="space-y-2">
+                {data.orderBlocks.map((ob, i) => (
+                  <div key={i} className="rounded-md border border-card-border/70 bg-card/55 px-3 py-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className={`font-bold ${ob.type === 'bullish' ? 'text-bull' : 'text-bear'}`}>
+                        {ob.type === 'bullish' ? 'Bullish' : 'Bearish'}
+                      </span>
+                      <span className="rounded-full bg-bg/60 px-2 py-0.5 text-[10px] font-bold text-muted">Forca {ob.strength}</span>
+                    </div>
+                    <div className="mt-1 font-mono-num text-white">{formatPrice(ob.low)} - {formatPrice(ob.high)}</div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       )}
 
-      {/* FVGs */}
-      {data.fvgs.length > 0 && (
-        <div>
-          <span className="text-muted">FVG: </span>
-          {data.fvgs.map((fvg, i) => (
-            <span key={i} className={`mr-2 font-mono-num ${fvg.type === 'bullish' ? 'text-bull' : 'text-bear'}`}>
-              {fvg.type === 'bullish' ? '\u25B2' : '\u25BC'} {fvg.bottom.toFixed(2)}-{fvg.top.toFixed(2)}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Order Blocks */}
-      {data.orderBlocks.length > 0 && (
-        <div>
-          <span className="text-muted">OB: </span>
-          {data.orderBlocks.map((ob, i) => (
-            <span key={i} className={`mr-2 font-mono-num ${ob.type === 'bullish' ? 'text-bull' : 'text-bear'}`}>
-              {ob.type === 'bullish' ? '\u25B2' : '\u25BC'} {ob.low.toFixed(2)}-{ob.high.toFixed(2)} (F{ob.strength})
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Candle Patterns */}
       {data.candlePatterns.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {data.candlePatterns.map((cp, i) => (
-            <span key={i} className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-              cp.type === 'bullish' ? 'bg-bull/20 text-bull' : cp.type === 'bearish' ? 'bg-bear/20 text-bear' : 'bg-card-border text-muted'
-            }`}>
-              {cp.name}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Liquidity Sweep */}
-      {data.liquiditySweep.detected && (
-        <div className={`font-bold px-2 py-1 rounded ${
-          data.liquiditySweep.direction === 'bullish' ? 'bg-bull/20 text-bull' : 'bg-bear/20 text-bear'
-        }`}>
-          LIQUIDITY SWEEP {data.liquiditySweep.direction === 'bullish' ? '\u25B2' : '\u25BC'} @ {data.liquiditySweep.level?.toFixed(2)}
-        </div>
-      )}
-
-      {/* S/R Zones */}
-      {data.srZones.length > 0 && (
-        <div className="space-y-0.5">
-          <span className="text-muted">S/R:</span>
-          {data.srZones.slice(0, 3).map((sr, i) => (
-            <div key={i} className="flex items-center justify-between">
-              <span className={sr.type === 'support' ? 'text-bull' : 'text-bear'}>
-                {sr.type === 'support' ? 'Suporte' : 'Resistencia'}
+        <section className="rounded-lg border border-card-border/80 bg-bg/25 p-3">
+          <h4 className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted">Padroes de candle</h4>
+          <div className="flex flex-wrap gap-1.5">
+            {data.candlePatterns.map((cp, i) => (
+              <span key={i} className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${
+                cp.type === 'bullish' ? 'bg-bull/15 text-bull' : cp.type === 'bearish' ? 'bg-bear/15 text-bear' : 'bg-card-border text-muted'
+              }`}>
+                {cp.name} - {cp.significance}
               </span>
-              <span className="font-mono-num">{sr.level.toFixed(2)} <span className="text-muted">({sr.touches}x {sr.strength})</span></span>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {data.liquiditySweep.detected && (
+        <div className={`rounded-lg border px-3 py-2 font-bold ${
+          data.liquiditySweep.direction === 'bullish' ? 'border-bull/20 bg-bull/10 text-bull' : 'border-bear/20 bg-bear/10 text-bear'
+        }`}>
+          Liquidity sweep {data.liquiditySweep.direction === 'bullish' ? 'bullish' : 'bearish'} @ {data.liquiditySweep.level != null ? formatPrice(data.liquiditySweep.level) : '-'}
+        </div>
+      )}
+
+      {data.srZones.length > 0 && (
+        <section className="rounded-lg border border-card-border/80 bg-bg/25 p-3">
+          <h4 className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted">Suporte e resistencia</h4>
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            {data.srZones.slice(0, 6).map((sr, i) => (
+            <div key={i} className="rounded-md border border-card-border/70 bg-card/55 px-3 py-2">
+              <div className={`text-[10px] font-bold uppercase ${sr.type === 'support' ? 'text-bull' : 'text-bear'}`}>
+                {sr.type === 'support' ? 'Suporte' : 'Resistencia'}
+              </div>
+              <div className="mt-1 font-mono-num text-sm font-bold text-white">{formatPrice(sr.level)}</div>
+              <div className="mt-1 text-[11px] text-muted">{sr.touches} toques - {sr.strength}</div>
             </div>
           ))}
-        </div>
+          </div>
+        </section>
       )}
     </div>
   )
@@ -306,31 +337,31 @@ export default function PairDetail({ analysis }: { analysis: PairAnalysis }) {
       : 'Sem oportunidade no momento'
 
   return (
-    <div className="flex-1 min-w-0 overflow-y-auto p-1.5 sm:p-2 md:p-4 space-y-2.5 md:space-y-4">
+    <div className="flex-1 min-w-0 overflow-y-auto bg-[radial-gradient(circle_at_top_right,rgba(192,193,255,0.08),transparent_32%),var(--color-bg)] p-2 sm:p-3 md:p-5 space-y-3 md:space-y-5">
       {/* Price Header — all modes */}
-      <div className="bg-card border border-card-border rounded-lg">
+      <div className="overflow-hidden rounded-xl border border-card-border bg-card/90 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
         <PriceHeader price={analysis.price} />
       </div>
 
       {/* Tabbed indicators/risk — trader and pro */}
       {userMode !== 'simple' && (
-        <div className="bg-card border border-card-border rounded-lg overflow-hidden">
-          <div className="grid grid-cols-3 border-b border-card-border">
+        <div className="overflow-hidden rounded-xl border border-card-border bg-card/90">
+          <div className="flex overflow-x-auto border-b border-card-border bg-bg/25">
             {(['resumo', 'indicadores', 'smartmoney', 'risco'] as const)
               .filter(t => userMode === 'pro' || t !== 'smartmoney')
               .map(tab => (
                 <button
                   key={tab}
                   onClick={() => setDetailTab(tab)}
-                  className={`min-w-0 px-2 py-2 text-[11px] md:text-xs font-medium transition-colors cursor-pointer ${
-                    detailTab === tab ? 'text-white border-b-2 border-accent' : 'text-muted hover:text-white border-b-2 border-transparent'
+                  className={`min-w-[112px] flex-1 px-3 py-3 text-xs font-bold transition-colors cursor-pointer ${
+                    detailTab === tab ? 'text-white border-b-2 border-accent bg-card-hover/60' : 'text-muted hover:text-white border-b-2 border-transparent'
                   }`}
                 >
                   {tab === 'resumo' ? 'Resumo' : tab === 'indicadores' ? 'Indicadores' : tab === 'smartmoney' ? 'Smart Money' : 'Risco'}
                 </button>
               ))}
           </div>
-          <div className="p-1.5 sm:p-2">
+          <div className="p-3">
             {detailTab === 'resumo' && <QuickSummary indicators={analysis.indicators} signal={analysis.signal} price={analysis.price} />}
             {detailTab === 'indicadores' && <IndicatorPanel indicators={analysis.indicators} price={analysis.price.price} />}
             {detailTab === 'smartmoney' && analysis.indicators.smartMoney && <SmartMoneyPanel data={analysis.indicators.smartMoney} />}
@@ -341,57 +372,65 @@ export default function PairDetail({ analysis }: { analysis: PairAnalysis }) {
 
       {/* Simple mode: simplified risk */}
       {userMode === 'simple' && analysis.signal.riskManagement && (
-        <div className="bg-card border border-card-border rounded-lg">
+        <div className="rounded-xl border border-card-border bg-card">
           <RiskPanel risk={analysis.signal.riskManagement} />
         </div>
       )}
 
       {/* External Data — pro only */}
       {userMode === 'pro' && ext && (
-        <div className="bg-card border border-card-border rounded-lg px-4 py-3 space-y-2 text-xs">
-          <h4 className="text-muted font-bold text-[10px] uppercase tracking-wider">Dados Externos</h4>
+        <div className="rounded-xl border border-card-border bg-card px-4 py-3 text-xs">
+          <div className="mb-3">
+            <h4 className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">Dados externos</h4>
+            <p className="mt-1 text-[11px] text-dim">Contexto de mercado usado como filtro auxiliar.</p>
+          </div>
+          <div className="grid gap-2 md:grid-cols-3">
 
           {toggles.openInterest && ext.openInterest && (
-            <div className="flex items-center gap-2">
-              <span className="text-muted">OI:</span>
-              <span className="font-mono-num text-white">{formatVolume(ext.openInterest.value)}</span>
-              <span className={`font-mono-num font-bold ${ext.openInterest.change >= 0 ? 'text-bull' : 'text-bear'}`}>
-                ({ext.openInterest.change >= 0 ? '+' : ''}{ext.openInterest.change.toFixed(1)}%)
-              </span>
-              <span>
-                {ext.openInterest.trend === 'rising' ? '\u2191' : ext.openInterest.trend === 'falling' ? '\u2193' : '\u2192'}
-              </span>
+            <div className="rounded-lg border border-card-border/75 bg-bg/25 p-3">
+              <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-dim">Open interest</div>
+              <div className="mt-1 font-mono-num text-sm font-bold text-white">{formatVolume(ext.openInterest.value)}</div>
+              <div className={`mt-1 font-mono-num text-xs font-bold ${ext.openInterest.change >= 0 ? 'text-bull' : 'text-bear'}`}>
+                {ext.openInterest.change >= 0 ? '+' : ''}{ext.openInterest.change.toFixed(1)}%
+                <span className="ml-1 text-muted">
+                  {ext.openInterest.trend === 'rising' ? '\u2191' : ext.openInterest.trend === 'falling' ? '\u2193' : '\u2192'}
+                </span>
+              </div>
             </div>
           )}
 
           {toggles.longShortRatio && ext.longShortRatio && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-muted">L/S:</span>
-              <span className="font-mono-num font-bold text-white">{ext.longShortRatio.ratio.toFixed(2)}</span>
-              <span className="text-muted">
-                (Long: <span className="font-mono-num text-bull">{ext.longShortRatio.longPercent.toFixed(0)}%</span>
-                {' | '}Short: <span className="font-mono-num text-bear">{ext.longShortRatio.shortPercent.toFixed(0)}%</span>)
-              </span>
+            <div className="rounded-lg border border-card-border/75 bg-bg/25 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-dim">Long / Short</div>
               {ext.longShortRatio.crowded !== 'neutral' && (
-                <span className="inline-block px-1.5 py-0.5 text-[10px] font-bold bg-warn/20 text-warn rounded">
-                  <svg className="w-3 h-3 text-warn inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> CROWD {ext.longShortRatio.crowded === 'long' ? 'LONG' : 'SHORT'}
+                <span className="rounded-full bg-warn/15 px-2 py-0.5 text-[10px] font-bold text-warn">
+                  Crowd {ext.longShortRatio.crowded === 'long' ? 'LONG' : 'SHORT'}
                 </span>
               )}
+              </div>
+              <div className="mt-1 font-mono-num text-sm font-bold text-white">{ext.longShortRatio.ratio.toFixed(2)}</div>
+              <div className="mt-1 text-xs text-muted">
+                Long <span className="font-mono-num text-bull">{ext.longShortRatio.longPercent.toFixed(0)}%</span>
+                {' / '}
+                Short <span className="font-mono-num text-bear">{ext.longShortRatio.shortPercent.toFixed(0)}%</span>
+              </div>
             </div>
           )}
 
           {toggles.fearGreed && ext.fearGreed && (
-            <div className="flex items-center gap-2">
-              <span className="text-muted">Fear & Greed:</span>
-              <span className="font-mono-num font-bold text-white">{ext.fearGreed.value}</span>
-              <span className="text-muted">- {ext.fearGreed.label}</span>
+            <div className="rounded-lg border border-card-border/75 bg-bg/25 p-3">
+              <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-dim">Fear & Greed</div>
+              <div className="mt-1 font-mono-num text-sm font-bold text-white">{ext.fearGreed.value}</div>
+              <div className="mt-1 text-xs text-muted">{ext.fearGreed.label}</div>
             </div>
           )}
+          </div>
         </div>
       )}
 
       {/* Signal Panel */}
-      <div className="bg-card border border-card-border rounded-lg">
+      <div className="overflow-hidden rounded-xl border border-card-border bg-card">
         {userMode === 'simple' ? (
           /* Simplified signal for simple mode */
           <div className="px-3 py-2 space-y-2 text-xs">

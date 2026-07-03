@@ -9,7 +9,7 @@ import { config } from './config.js'
 import { initAuthTables, registerUser, loginUser, getUserById, generateResetToken, resetPassword, getOrCreateUserFromClerk } from './auth.js'
 import { encrypt, tryDecrypt, maskSecret } from './crypto.js'
 import { initAuditTable, logAudit } from './auditLog.js'
-import { validate, updateSettingsSchema, executeOrderSchema, backtestParamsSchema, createAlertSchema, paginationSchema, registerSchema, loginSchema, analyzePairSchema, toggleFavoriteSchema, symbolOnlySchema, deleteAlertSchema } from './validation.js'
+import { validate, updateSettingsSchema, executeOrderSchema, backtestParamsSchema, createAlertSchema, paginationSchema, registerSchema, loginSchema, analyzePairSchema, toggleFavoriteSchema, replaceFavoriteSchema, symbolOnlySchema, deleteAlertSchema } from './validation.js'
 import { pool, initDatabase, initUserSettingsTable, defaultSettings, saveSignal, updateSettings, getUserSettings, updateUserSettings, getHistory, flushBuffer, getPerformanceData, cleanupExpiredTokens } from './database.js'
 import { calculateIndicators } from './calculator.js'
 import { generateSignal, detectAlerts } from './signals.js'
@@ -835,6 +835,18 @@ async function main(): Promise<void> {
           logger.error({ err, userId: uid, symbol }, 'TradeTracker error')
         }
 
+        // Paper trade follows the same monitored pairs as the user's watchlist.
+        try {
+          const paperSettings = resolveStrategySettings(session.settings, symbol, 'paper')
+          const paperSignal = generateSignal(indicators, priceData, paperSettings, prevSignal)
+          await session.paperTracker.onCandleClose(symbol, paperSignal, priceData.price)
+          if (paperSignal.confidence === 'high' && paperSignal.direction !== 'NEUTRO') {
+            await session.paperTracker.evaluateAndOpen(symbol, paperSignal, indicators, priceData, paperSettings, analysis.multiTimeframe, analysis.externalData)
+          }
+        } catch (err) {
+          logger.error({ err, userId: uid, symbol }, 'PaperTracker error')
+        }
+
         logger.info({ symbol, userId: uid, direction: userSignal.direction, score: userSignal.confluenceScore, confidence: userSignal.confidence }, 'Signal generated')
 
         io.to(`user:${uid}`).emit('analysis-update', userAnalysis)
@@ -1243,6 +1255,75 @@ async function main(): Promise<void> {
         console.error('[Socket.io] Error toggling favorite:', (err as Error).message)
         if (typeof callback === 'function') {
           ;(callback as (d: { success: boolean; error: string }) => void)({ success: false, error: 'Nao foi possivel atualizar o par monitorado.' })
+        }
+      }
+    })
+
+    // Replace a monitored pair in one atomic user action
+    socket.on('replace-favorite', async (data: unknown, callback?: unknown) => {
+      if (!checkSocketRate(socket.id)) return
+      try {
+        const v = validate(replaceFavoriteSchema, data)
+        if (!v.success) {
+          if (typeof callback === 'function') {
+            ;(callback as (d: { success: boolean; error: string }) => void)({ success: false, error: v.error })
+          }
+          return
+        }
+
+        const { removeSymbol, addSymbol } = v.data
+        if (removeSymbol === addSymbol) {
+          if (typeof callback === 'function') {
+            ;(callback as (d: { success: boolean; favorites: string[] }) => void)({ success: true, favorites: session.favorites })
+          }
+          return
+        }
+
+        if (!session.favorites.includes(removeSymbol)) {
+          if (typeof callback === 'function') {
+            ;(callback as (d: { success: boolean; error: string }) => void)({ success: false, error: 'Par a substituir nao esta sendo monitorado.' })
+          }
+          return
+        }
+
+        if (session.favorites.includes(addSymbol)) {
+          session.favorites = session.favorites.filter((p: string) => p !== removeSymbol)
+        } else {
+          session.favorites = session.favorites.map((p: string) => p === removeSymbol ? addSymbol : p)
+        }
+
+        if (!wsManager.isFavorite(addSymbol)) {
+          await wsManager.addFavorite(addSymbol)
+        }
+
+        let otherUserHasRemoved = false
+        for (const [uid, s] of userSessions) {
+          if (uid !== userId && s.favorites.includes(removeSymbol)) { otherUserHasRemoved = true; break }
+        }
+        if (!otherUserHasRemoved) {
+          wsManager.removeFavorite(removeSymbol)
+          state.delete(removeSymbol)
+          prevIndicators.delete(removeSymbol)
+          prevSignals.delete(removeSymbol)
+          lastEmitTimestamp.delete(removeSymbol)
+        }
+
+        await updateUserSettings(userId, { favorites: session.favorites, pairs: session.favorites })
+        session.settings.favorites = session.favorites
+        session.settings.pairs = session.favorites
+
+        io.to(`user:${userId}`).emit('settings-updated', sanitizeSettings(session.settings))
+        io.to(`user:${userId}`).emit('favorites-updated', session.favorites)
+
+        if (typeof callback === 'function') {
+          ;(callback as (d: { success: boolean; favorites: string[] }) => void)({ success: true, favorites: session.favorites })
+        }
+
+        await logAudit({ userId, action: 'FAVORITE_REPLACE', details: { removeSymbol, addSymbol }, ip: undefined })
+      } catch (err) {
+        console.error('[Socket.io] Error replacing favorite:', (err as Error).message)
+        if (typeof callback === 'function') {
+          ;(callback as (d: { success: boolean; error: string }) => void)({ success: false, error: 'Nao foi possivel substituir o par monitorado.' })
         }
       }
     })
@@ -1909,33 +1990,7 @@ async function main(): Promise<void> {
         pair.signalDirection = r.direction
       }
 
-      // Paper trade: evaluate high-confidence signals per-user
-      if (r.signal && r.indicators && r.priceData) {
-        for (const [, session] of userSessions) {
-          (async () => {
-            try {
-              const paperSettings = resolveStrategySettings(session.settings, r.symbol, 'paper')
-              const paperSignal = generateSignal(r.indicators!, r.priceData!, paperSettings)
-              if (paperSignal.confidence !== 'high') return
-              const tf15m = { interval: '15m' as const, direction: paperSignal.direction, score: paperSignal.confluenceScore, trend: paperSignal.direction === 'LONG' ? 'Bullish' : paperSignal.direction === 'SHORT' ? 'Bearish' : 'Lateral', keyLevels: { ma20: r.indicators!.ma20, ma50: r.indicators!.ma50, ma200: r.indicators!.ma200 } }
-              const [mtfData, extData] = await Promise.all([
-                getMultiTimeframeData(r.symbol, tf15m, paperSettings).catch(() => undefined),
-                fetchExternalData(r.symbol).catch(() => undefined),
-              ])
-              await session.paperTracker.evaluateAndOpen(r.symbol, paperSignal, r.indicators!, r.priceData!, paperSettings, mtfData, extData)
-            } catch {}
-          })()
-        }
-      }
-
-      // Candle close check for open paper trades per-user
-      if (r.signal) {
-        for (const [, session] of userSessions) {
-          const paperSettings = resolveStrategySettings(session.settings, r.symbol, 'paper')
-          const paperSignal = r.indicators && r.priceData ? generateSignal(r.indicators, r.priceData, paperSettings) : r.signal
-          session.paperTracker.onCandleClose(r.symbol, paperSignal, r.priceData?.price ?? pair?.price ?? 0).catch(() => {})
-        }
-      }
+      // Batch scoring is discovery-only. Paper trade is evaluated from monitored pairs on candle close.
     }
 
     if (results.length > 0) {

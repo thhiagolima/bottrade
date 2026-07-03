@@ -30,37 +30,37 @@ export default function SidebarPairCard({
   return (
     <button
       onClick={onClick}
-      className={`w-full min-w-0 text-left py-1.5 px-2 border-l-2 ${colors.border} transition-all duration-200 animate-fade-in ${
-        selected ? 'bg-card-hover' : 'hover:bg-card-border/30'
+      className={`w-full min-w-0 text-left border-l-2 px-2.5 py-2.5 ${colors.border} transition-all duration-200 animate-fade-in ${
+        selected ? 'bg-card-hover shadow-[inset_0_0_0_1px_var(--color-card-border)]' : 'hover:bg-card-border/30'
       }`}
     >
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-0.5">
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(72px,auto)] gap-x-2 gap-y-1">
         <div className="min-w-0 flex items-center gap-1.5">
-          <span className="min-w-0 truncate font-bold text-xs font-body" title={analysis.symbol}>
+          <span className="min-w-0 truncate text-sm font-black tracking-tight text-white" title={analysis.symbol}>
             {analysis.symbol.replace('USDT', '')}
           </span>
-          <span className={`flex-shrink-0 text-[10px] px-1 py-0 font-bold rounded ${colors.bg} ${colors.text}`}>
+          <span className={`flex-shrink-0 rounded px-1.5 py-0.5 text-[9px] font-black ${colors.bg} ${colors.text}`}>
             {direction}
           </span>
         </div>
 
-        <span className="font-mono-num text-xs text-right tabular-nums">
+        <span className="font-mono-num text-right text-xs font-bold tabular-nums text-white">
           {formatPrice(analysis.price.price)}
         </span>
 
-        <div className="min-w-0 flex items-center gap-2">
-          <div className="flex-1 h-0.5 rounded-full overflow-hidden score-bar-bg">
+        <div className="min-w-0 flex items-center gap-2 self-end">
+          <div className="h-1 flex-1 overflow-hidden rounded-full score-bar-bg">
             <div
               className={`h-full rounded-full transition-all duration-500 ${getScoreFillClass(direction)}`}
               style={{ width: `${scorePercent}%` }}
             />
           </div>
-          <span className="font-mono-num text-[10px] text-muted w-7 text-right tabular-nums">
+          <span className="w-8 text-right font-mono-num text-[10px] text-muted tabular-nums">
             {scorePercent.toFixed(0)}%
           </span>
         </div>
 
-        <span className={`font-mono-num text-[10px] font-bold text-right tabular-nums ${changePositive ? 'text-bull' : 'text-bear'}`}>
+        <span className={`text-right font-mono-num text-xs font-black tabular-nums ${changePositive ? 'text-bull' : 'text-bear'}`}>
           {changePositive ? '+' : ''}{analysis.price.change24h.toFixed(2)}%
         </span>
       </div>

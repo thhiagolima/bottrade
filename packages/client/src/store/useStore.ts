@@ -202,9 +202,10 @@ export const useStore = create<AppState>((set, get) => ({
 
   setFavorites: (favorites: string[]) => {
     const currentSelected = get().selectedPair
+    const allPairs = get().allPairs
     set({
       favorites,
-      selectedPair: currentSelected && favorites.includes(currentSelected)
+      selectedPair: currentSelected && (favorites.includes(currentSelected) || allPairs[currentSelected])
         ? currentSelected
         : (favorites[0] ?? null),
     })
@@ -221,10 +222,11 @@ export const useStore = create<AppState>((set, get) => ({
   setSettings: (settings: UserSettings) => {
     const favorites = settings.favorites ?? settings.pairs
     const currentSelected = get().selectedPair
+    const allPairs = get().allPairs
     set({
       settings,
       favorites,
-      selectedPair: currentSelected && favorites.includes(currentSelected)
+      selectedPair: currentSelected && (favorites.includes(currentSelected) || allPairs[currentSelected])
         ? currentSelected
         : (favorites[0] ?? null),
     })
@@ -250,7 +252,7 @@ export const useStore = create<AppState>((set, get) => ({
     const nextFavorites = favorites ?? get().favorites
     const currentSelected = get().selectedPair
     const firstSymbol = analyses.length > 0 ? analyses[0].symbol : (nextFavorites[0] ?? null)
-    const selectedPair = currentSelected && nextFavorites.includes(currentSelected) ? currentSelected : firstSymbol
+    const selectedPair = currentSelected && (nextFavorites.includes(currentSelected) || allPairsRecord[currentSelected]) ? currentSelected : firstSymbol
     set({
       pairs,
       openTrades: tradesRecord,

@@ -15,6 +15,7 @@ export default function AppSidebar() {
   const pairs = useStore((s) => s.pairs)
   const allPairs = useStore((s) => s.allPairs)
   const favorites = useStore((s) => s.favorites)
+  const tempAnalysis = useStore((s) => s.tempAnalysis)
   const selectedPair = useStore((s) => s.selectedPair)
   const sidebarCollapsed = useStore((s) => s.sidebarCollapsed)
   const selectPair = useStore((s) => s.selectPair)
@@ -55,9 +56,12 @@ export default function AppSidebar() {
 
   const favoriteEntries = useMemo(() => {
     return favorites
-      .map((symbol) => ({ symbol, analysis: pairs[symbol] }))
+      .map((symbol) => ({
+        symbol,
+        analysis: pairs[symbol] ?? (tempAnalysis?.symbol === symbol ? tempAnalysis : null),
+      }))
       .filter((entry) => entry.analysis)
-  }, [favorites, pairs])
+  }, [favorites, pairs, tempAnalysis])
 
   const allPairsSorted = useMemo(() => {
     const arr = Object.values(allPairs).filter(
@@ -100,12 +104,9 @@ export default function AppSidebar() {
   }, [])
 
   const handleSelectPair = useCallback((symbol: string) => {
-    if (!favorites.includes(symbol)) {
-      return
-    }
     selectPair(symbol)
     closeMobileSidebar()
-  }, [favorites, selectPair, closeMobileSidebar])
+  }, [selectPair, closeMobileSidebar])
 
   const extractShortSymbol = (symbol: string) => {
     return symbol.replace(/USDT$/, '').slice(0, 3)
@@ -165,17 +166,17 @@ export default function AppSidebar() {
   // ── Expanded sidebar ──
   return (
     <div
-      className="flex flex-col border-r border-card-border bg-card transition-all duration-200 w-[85vw] max-w-[300px] md:w-[200px] md:max-w-none h-full"
-      style={{ minWidth: 200 }}
+      className="flex h-full flex-col border-r border-card-border bg-card transition-all duration-200 w-[88vw] max-w-[320px] md:w-[248px] md:max-w-none"
+      style={{ minWidth: 220 }}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-2 py-1.5 border-b border-card-border">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 min-w-0">
           <span
             className={`w-1.5 h-1.5 rounded-full ${serverConnected ? 'bg-bull' : 'bg-bear'}`}
             title={serverConnected ? 'Conectado' : 'Desconectado'}
           />
-          <span className="text-[11px] text-muted font-mono-num">{favorites.length} pares</span>
+          <span className="truncate text-[11px] text-muted font-mono-num">{favorites.length} pares monitorados</span>
         </div>
         <div className="flex items-center gap-1">
           {/* Mobile close button */}
@@ -241,7 +242,7 @@ export default function AppSidebar() {
             value={sidebarSearch}
             onChange={(e) => setSidebarSearch(e.target.value)}
             placeholder="Buscar par..."
-            className="w-full px-2 py-1 bg-bg border border-card-border rounded text-white font-mono-num text-xs"
+            className="h-8 w-full rounded-lg border border-card-border bg-bg px-2 text-xs text-white font-mono-num"
           />
         </div>
       )}
@@ -356,21 +357,21 @@ function AllPairRow({
     emitToggleFavorite(pair.symbol)
   }
 
-  const handleMonitorClick = (e: React.MouseEvent) => {
+  const handlePreviewClick = (e: React.MouseEvent) => {
     e.stopPropagation()
-    emitToggleFavorite(pair.symbol)
+    onSelect(pair.symbol)
   }
 
   const heatBg = heat?.label === 'QUENTE' ? 'bg-bear/10' : heat?.label === 'MORNO' ? 'bg-warn/10' : ''
 
   return (
     <div
-      className={`px-2 py-1.5 text-xs border-b border-card-border/30 transition-colors ${isFavorite ? 'cursor-pointer' : 'cursor-default'} ${heatBg} ${
-        isSelected ? 'bg-card-border/50' : 'hover:bg-card-border/20'
+      className={`border-b border-card-border/35 px-2.5 py-2.5 text-xs transition-colors ${isFavorite ? 'cursor-pointer' : 'cursor-default'} ${heatBg} ${
+        isSelected ? 'bg-card-hover shadow-[inset_0_0_0_1px_var(--color-card-border)]' : 'hover:bg-card-border/20'
       }`}
-      onClick={isFavorite ? handleOpen : undefined}
+      onClick={isFavorite ? handleOpen : () => onSelect(pair.symbol)}
     >
-      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-1.5 gap-y-0.5">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_minmax(74px,auto)] items-center gap-x-2 gap-y-1">
         <button
           onClick={handleFavoriteClick}
           className={`flex-shrink-0 p-1 -m-1 cursor-pointer ${isFavorite ? 'text-warn' : 'text-muted/30 hover:text-warn/60'}`}
@@ -382,12 +383,12 @@ function AllPairRow({
           </svg>
         </button>
 
-        <div className="min-w-0 flex items-center gap-1">
-          <span className="min-w-0 truncate font-bold text-[11px]" title={pair.symbol}>
+        <div className="min-w-0 flex items-center gap-1.5">
+          <span className="min-w-0 truncate text-sm font-black text-white" title={pair.symbol}>
             {pair.symbol.replace('USDT', '')}
           </span>
           {pair.signalDirection && pair.signalDirection !== 'NEUTRO' && (
-            <span className={`flex-shrink-0 px-0.5 py-0 text-[9px] font-bold rounded ${
+            <span className={`flex-shrink-0 rounded px-1.5 py-0.5 text-[9px] font-black ${
               pair.signalDirection === 'LONG' ? 'bg-bull/20 text-bull' : 'bg-bear/20 text-bear'
             }`}>
               {pair.signalDirection}
@@ -395,29 +396,29 @@ function AllPairRow({
           )}
         </div>
 
-        <span className="font-mono-num text-right text-[10px] tabular-nums">
+        <span className="font-mono-num text-right text-xs font-bold tabular-nums text-white">
           {pair.price > 0 ? formatPrice(pair.price) : 'carregando'}
         </span>
 
-        <span className={`col-start-3 font-mono-num text-right text-[10px] tabular-nums ${changePositive ? 'text-bull' : 'text-bear'}`}>
+        <span className={`col-start-3 font-mono-num text-right text-xs font-black tabular-nums ${changePositive ? 'text-bull' : 'text-bear'}`}>
           {changePositive ? '+' : ''}{pair.change24h.toFixed(1)}%
         </span>
       </div>
       {/* Score bar (if confluence score available) */}
       {pair.confluenceScore != null && (
-        <div className="flex items-center gap-1 mt-0.5">
-          <div className="flex-1 h-0.5 rounded-full overflow-hidden" style={{ background: 'linear-gradient(to right, #ff4444, #ffaa00, #00c896)' }}>
+        <div className="mt-1 flex items-center gap-2">
+          <div className="h-1 flex-1 overflow-hidden rounded-full" style={{ background: 'linear-gradient(to right, #ff5451, #ffbf5f, #4edea3)' }}>
             <div className="h-full bg-white/30 rounded-full" style={{ width: `${Math.min(100, Math.max(0, pair.confluenceScore))}%` }} />
           </div>
-          <span className="font-mono-num text-[9px] text-muted w-6 text-right">{pair.confluenceScore.toFixed(0)}%</span>
+          <span className="w-8 text-right font-mono-num text-[10px] text-muted">{pair.confluenceScore.toFixed(0)}%</span>
         </div>
       )}
 
       {/* Row 2: heat score + reasons + action buttons */}
-      <div className="mt-0.5 flex items-center gap-1 min-w-0">
+      <div className="mt-1 flex min-w-0 items-center gap-1.5">
         {heat && heat.label !== 'FRIO' && (
           <>
-            <span className={`px-0.5 py-0 text-[9px] font-bold rounded ${
+            <span className={`rounded px-1.5 py-0.5 text-[9px] font-black ${
               heat.label === 'QUENTE' ? 'bg-bear/20 text-bear' : 'bg-warn/20 text-warn'
             }`}>
               {heat.score}
@@ -429,15 +430,15 @@ function AllPairRow({
         )}
         {(!heat || heat.label === 'FRIO') && (
           <span className="text-[9px] text-muted truncate flex-1">
-            {isFavorite ? 'Clique para abrir' : 'Adicione para monitorar'}
+            {isFavorite ? 'Clique para abrir' : 'Clique para ver detalhes'}
           </span>
         )}
         <button
-          onClick={isFavorite ? handleOpen : handleMonitorClick}
+          onClick={isFavorite ? handleOpen : handlePreviewClick}
           disabled={isFavorite && isAnalyzing}
-          className="flex-shrink-0 px-1 py-0 text-[9px] font-bold bg-accent/20 text-accent rounded hover:bg-accent/30 transition-colors disabled:opacity-50"
+          className="flex-shrink-0 rounded border border-accent/25 bg-accent/15 px-2 py-0.5 text-[9px] font-black text-accent transition-colors hover:bg-accent/25 disabled:opacity-50"
         >
-          {isFavorite ? (isAnalyzing ? '...' : 'Abrir') : 'Monitorar'}
+          {isFavorite ? (isAnalyzing ? '...' : 'Abrir') : 'Ver'}
         </button>
       </div>
     </div>

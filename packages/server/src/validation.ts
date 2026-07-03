@@ -182,6 +182,12 @@ export const toggleFavoriteSchema = z.object({
   symbol: symbolSchema,
 })
 
+// Replace one monitored favorite with another symbol
+export const replaceFavoriteSchema = z.object({
+  removeSymbol: symbolSchema,
+  addSymbol: symbolSchema,
+})
+
 // Symbol-only schema (e.g. get-candles)
 export const symbolOnlySchema = z.object({
   symbol: symbolSchema

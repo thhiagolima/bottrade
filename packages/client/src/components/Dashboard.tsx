@@ -1,4 +1,7 @@
+import { useState } from 'react'
+import toast from 'react-hot-toast'
 import { useStore } from '../store/useStore'
+import { emitAnalyzePair, emitReplaceFavorite } from '../hooks/useSocket'
 import TopBar from './TopBar'
 import AppSidebar from './AppSidebar'
 import PairDetail from './PairDetail'
@@ -253,18 +256,26 @@ function SignalRow({ analysis, selected, onClick }: { analysis: PairAnalysis; se
 
 function DashboardPage() {
   const pairs = useStore((s) => s.pairs)
+  const allPairs = useStore((s) => s.allPairs)
   const selectedPair = useStore((s) => s.selectedPair)
+  const selectPair = useStore((s) => s.selectPair)
   const compareMode = useStore((s) => s.compareMode)
   const comparePairs = useStore((s) => s.comparePairs)
   const mobileSidebarOpen = useStore((s) => s.mobileSidebarOpen)
   const closeMobileSidebar = useStore((s) => s.closeMobileSidebar)
   const tempAnalysis = useStore((s) => s.tempAnalysis)
   const favorites = useStore((s) => s.favorites)
+  const setFavorites = useStore((s) => s.setFavorites)
+  const setTempAnalysis = useStore((s) => s.setTempAnalysis)
+  const updateAnalysis = useStore((s) => s.updateAnalysis)
+  const setSidebarTab = useStore((s) => s.setSidebarTab)
+  const setAnalyzingPair = useStore((s) => s.setAnalyzingPair)
 
   const selectedIsMonitored = selectedPair ? favorites.includes(selectedPair) : false
   const analysis = selectedPair && selectedIsMonitored
     ? (pairs[selectedPair] ?? (tempAnalysis?.symbol === selectedPair ? tempAnalysis : null))
     : null
+  const discoveryPair = selectedPair && !selectedIsMonitored ? allPairs[selectedPair] : null
 
   return (
     <div className="flex flex-1 overflow-hidden h-full">
@@ -289,11 +300,154 @@ function DashboardPage() {
         <CompareView />
       ) : analysis ? (
         <PairDetail analysis={analysis} />
+      ) : discoveryPair ? (
+        <PairDiscoveryPanel
+          pair={discoveryPair}
+          favorites={favorites}
+          pairs={pairs}
+          onReplaced={(nextFavorites) => {
+            const symbol = discoveryPair.symbol
+            if (nextFavorites) {
+              setFavorites(nextFavorites)
+            }
+            setTempAnalysis(null)
+            setSidebarTab('favorites')
+            selectPair(symbol)
+            setAnalyzingPair(symbol)
+            emitAnalyzePair(symbol, (analysis, error) => {
+              setAnalyzingPair(null)
+              if (analysis) {
+                updateAnalysis(analysis)
+                setTempAnalysis(analysis)
+                return
+              }
+              toast.error(error || 'Par monitorado. A analise completa sera carregada em instantes.')
+            })
+          }}
+        />
       ) : (
         <div className="flex-1 flex items-center justify-center text-muted text-sm md:text-base px-4 text-center">
           {compareMode ? 'Selecione pares na sidebar para comparar' : 'Selecione um par na sidebar'}
         </div>
       )}
+    </div>
+  )
+}
+
+function PairDiscoveryPanel({
+  pair,
+  favorites,
+  pairs,
+  onReplaced,
+}: {
+  pair: BasicPairData
+  favorites: string[]
+  pairs: Record<string, PairAnalysis>
+  onReplaced: (favorites?: string[]) => void
+}) {
+  const [replacing, setReplacing] = useState<string | null>(null)
+  const changePositive = pair.change24h >= 0
+  const heat = pair.heatScore
+  const scoreLabel = pair.confluenceScore != null ? `${pair.confluenceScore.toFixed(0)}%` : '--'
+
+  const replacePair = (removeSymbol: string) => {
+    setReplacing(removeSymbol)
+    emitReplaceFavorite(removeSymbol, pair.symbol, (result) => {
+      setReplacing(null)
+      if (!result.success) {
+        toast.error(result.error || 'Nao foi possivel substituir o par.')
+        return
+      }
+      toast.success(`${removeSymbol.replace(/USDT$/, '')} substituido por ${pair.symbol.replace(/USDT$/, '')}`)
+      onReplaced(result.favorites)
+    })
+  }
+
+  return (
+    <main className="flex-1 overflow-y-auto bg-bg">
+      <div className="mx-auto w-full max-w-5xl px-4 py-5 md:px-8 md:py-8 space-y-4">
+        <section className="rounded-lg border border-card-border bg-card p-4 md:p-5">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="min-w-0">
+              <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted">Previa do mercado</div>
+              <h1 className="mt-1 text-2xl font-black text-white font-mono-num break-all">{pair.symbol}</h1>
+              <p className="mt-2 max-w-2xl text-sm text-muted">
+                Este par ainda nao esta na sua lista monitorada. Voce pode ver dados basicos e escolher qual par substituir para liberar a analise completa.
+              </p>
+            </div>
+            <div className="text-left md:text-right">
+              <div className="text-3xl font-black font-mono-num text-white">{pair.price > 0 ? formatPrice(pair.price) : '--'}</div>
+              <div className={`mt-1 text-sm font-bold font-mono-num ${changePositive ? 'text-bull' : 'text-bear'}`}>
+                {changePositive ? '+' : ''}{pair.change24h.toFixed(2)}%
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-5">
+            <DiscoveryMetric label="Mark" value={pair.markPrice > 0 ? formatPrice(pair.markPrice) : '--'} />
+            <DiscoveryMetric label="Funding" value={`${(pair.fundingRate * 100).toFixed(4)}%`} warning={Math.abs(pair.fundingRate) >= 0.001} />
+            <DiscoveryMetric label="Volume 24h" value={formatVolume(pair.volume24h)} />
+            <DiscoveryMetric label="Score" value={scoreLabel} />
+            <DiscoveryMetric label="Momento" value={heat ? `${heat.label} ${heat.score}` : (pair.signalDirection ?? 'NEUTRO')} />
+          </div>
+
+          {heat?.reasons?.length ? (
+            <div className="mt-4 rounded-md border border-card-border bg-bg/60 p-3">
+              <div className="text-[11px] font-bold uppercase text-muted">Leitura rapida</div>
+              <div className="mt-1 text-sm text-text">{heat.reasons.slice(0, 2).join(' | ')}</div>
+            </div>
+          ) : null}
+        </section>
+
+        <section className="rounded-lg border border-warn/40 bg-warn/10 p-4 md:p-5">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-base font-black text-white">Limite de pares monitorados atingido</h2>
+              <p className="mt-1 text-sm text-muted">
+                Voce monitora {favorites.length} pares. Escolha um deles para substituir por {pair.symbol}.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-3">
+            {favorites.map((symbol) => {
+              const analysis = pairs[symbol]
+              const direction = analysis?.signal.direction ?? 'NEUTRO'
+              const price = analysis?.price.price
+              return (
+                <button
+                  key={symbol}
+                  onClick={() => replacePair(symbol)}
+                  disabled={Boolean(replacing)}
+                  className="rounded-md border border-card-border bg-card px-3 py-3 text-left hover:border-accent/60 hover:bg-card-border/30 disabled:opacity-50 transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-white font-mono-num truncate">{symbol}</span>
+                    <span className={`text-[10px] font-black ${
+                      direction === 'LONG' ? 'text-bull' : direction === 'SHORT' ? 'text-bear' : 'text-warn'
+                    }`}>
+                      {direction}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between gap-2 text-xs text-muted">
+                    <span className="font-mono-num">{price ? formatPrice(price) : '--'}</span>
+                    <span className="text-accent font-bold">{replacing === symbol ? 'Trocando...' : 'Substituir'}</span>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </section>
+      </div>
+    </main>
+  )
+}
+
+function DiscoveryMetric({ label, value, warning = false }: { label: string; value: string; warning?: boolean }) {
+  return (
+    <div className="rounded-md border border-card-border bg-bg/60 px-3 py-2 min-w-0">
+      <div className="text-[10px] font-bold uppercase text-muted truncate">{label}</div>
+      <div className={`mt-1 text-sm font-bold font-mono-num truncate ${warning ? 'text-warn' : 'text-white'}`}>{value}</div>
     </div>
   )
 }

@@ -14,6 +14,7 @@ export type AuditAction =
   | 'TRADE_CLOSED'
   | 'API_KEY_CHANGED'
   | 'FAVORITE_TOGGLE'
+  | 'FAVORITE_REPLACE'
   | 'ALERT_CREATE'
   | 'ALERT_DELETE'
   | 'BACKTEST_RUN'

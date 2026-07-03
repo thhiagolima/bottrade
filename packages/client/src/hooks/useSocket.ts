@@ -269,6 +269,29 @@ export function emitToggleFavorite(
   socket?.emit('toggle-favorite', { symbol }, callback)
 }
 
+export function emitReplaceFavorite(
+  removeSymbol: string,
+  addSymbol: string,
+  callback?: (result: { success: boolean; favorites?: string[]; error?: string }) => void
+): void {
+  if (!socket?.connected) {
+    callback?.({ success: false, error: 'Conexao em tempo real indisponivel. Recarregue ou faca login novamente.' })
+    return
+  }
+
+  socket.timeout(12_000).emit(
+    'replace-favorite',
+    { removeSymbol, addSymbol },
+    (err: Error | null, result?: { success: boolean; favorites?: string[]; error?: string }) => {
+      if (err) {
+        callback?.({ success: false, error: 'Tempo esgotado ao substituir o par. Tente novamente.' })
+        return
+      }
+      callback?.(result ?? { success: false, error: 'Resposta invalida do servidor.' })
+    }
+  )
+}
+
 export function emitAddPair(symbol: string): void {
   socket?.emit('add-pair', { symbol })
 }

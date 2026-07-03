@@ -577,8 +577,15 @@ export class BinanceWSManager extends EventEmitter {
     this.cleanupTimers(state)
     if (state.ws) {
       state.ws.removeAllListeners()
-      if (state.ws.readyState === WebSocket.OPEN || state.ws.readyState === WebSocket.CONNECTING) {
-        state.ws.close()
+      state.ws.on('error', () => {})
+      try {
+        if (state.ws.readyState === WebSocket.OPEN) {
+          state.ws.close()
+        } else if (state.ws.readyState === WebSocket.CONNECTING) {
+          state.ws.terminate()
+        }
+      } catch {
+        // Socket may already be closing/closed.
       }
       state.ws = null
     }

@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import type { IndicatorValues, IndicatorToggles } from '@bottrade/shared'
+import type { ReactNode } from 'react'
+import type { IndicatorToggles, IndicatorValues } from '@bottrade/shared'
 import { useStore } from '../store/useStore'
 import { formatPrice, formatVolume } from '../utils/format'
 
@@ -11,13 +12,68 @@ const defaultToggles: IndicatorToggles = {
 }
 
 function getMacdTrendText(trend: string, histogram: number): string {
-  if (trend === 'bullish') {
-    return histogram > 0 ? 'Momentum bullish crescendo' : 'Momentum bullish enfraquecendo'
-  }
-  if (trend === 'bearish') {
-    return histogram < 0 ? 'Momentum bearish crescendo' : 'Momentum bearish enfraquecendo'
-  }
+  if (trend === 'bullish') return histogram > 0 ? 'Momentum bullish crescendo' : 'Momentum bullish enfraquecendo'
+  if (trend === 'bearish') return histogram < 0 ? 'Momentum bearish crescendo' : 'Momentum bearish enfraquecendo'
   return 'Momentum neutro'
+}
+
+function getZoneLabel(zone: 'overbought' | 'oversold' | 'neutral'): string {
+  if (zone === 'overbought') return 'SOBRECOMPRA'
+  if (zone === 'oversold') return 'SOBREVENDA'
+  return 'NEUTRO'
+}
+
+function getZoneClass(zone: 'overbought' | 'oversold' | 'neutral'): string {
+  if (zone === 'overbought') return 'text-bear bg-bear/10 border-bear/20'
+  if (zone === 'oversold') return 'text-bull bg-bull/10 border-bull/20'
+  return 'text-warn bg-warn/10 border-warn/20'
+}
+
+function DirectionIcon({ ok }: { ok: boolean }) {
+  return ok ? (
+    <svg className="h-3.5 w-3.5 text-bull" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  ) : (
+    <svg className="h-3.5 w-3.5 text-bear" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  )
+}
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="rounded-lg border border-card-border/80 bg-bg/25 p-3">
+      <h4 className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted">{title}</h4>
+      {children}
+    </section>
+  )
+}
+
+function MetricCard({
+  label,
+  value,
+  detail,
+  tone = 'neutral',
+}: {
+  label: string
+  value: string
+  detail?: string
+  tone?: 'bull' | 'bear' | 'warn' | 'neutral'
+}) {
+  const toneClass =
+    tone === 'bull' ? 'text-bull' :
+    tone === 'bear' ? 'text-bear' :
+    tone === 'warn' ? 'text-warn' : 'text-white'
+
+  return (
+    <div className="rounded-md border border-card-border/70 bg-card/55 px-3 py-2">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.06em] text-dim">{label}</div>
+      <div className={`mt-1 break-words font-mono-num text-sm font-bold ${toneClass}`}>{value}</div>
+      {detail && <div className="mt-1 text-[11px] leading-snug text-muted">{detail}</div>}
+    </div>
+  )
 }
 
 export default function IndicatorPanel({ indicators, price }: { indicators: IndicatorValues; price: number }) {
@@ -33,330 +89,177 @@ export default function IndicatorPanel({ indicators, price }: { indicators: Indi
     { name: 'EMA50', value: indicators.ema50, group: 'ema' },
   ]
 
-  const filteredMaRows = maRows.filter((row) =>
-    row.group === 'ma' ? toggles.ma : toggles.ema
-  )
-
-  const { macd } = indicators
-  const { stochRsi, volume, rsi, bollingerBands, atr, adx, vwap } = indicators
-
-  const zoneLabel =
-    stochRsi.zone === 'overbought' ? 'SOBRECOMPRA' :
-    stochRsi.zone === 'oversold' ? 'SOBREVENDA' : 'NEUTRO'
-
-  const zoneColor =
-    stochRsi.zone === 'overbought' ? 'text-bear' :
-    stochRsi.zone === 'oversold' ? 'text-bull' : 'text-warn'
+  const filteredMaRows = maRows.filter((row) => row.group === 'ma' ? toggles.ma : toggles.ema)
+  const { macd, stochRsi, volume, rsi, bollingerBands, atr, adx, vwap } = indicators
 
   return (
     <div className="border-t border-card-border" data-tour="indicator-panel">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-muted hover:text-white transition-colors"
+        className="flex w-full items-center justify-between px-3 py-3 text-xs font-bold text-muted transition-colors hover:text-white"
       >
         <span>INDICADORES</span>
         <span>{expanded ? '\u25B2' : '\u25BC'}</span>
       </button>
 
       {expanded && (
-        <div className="px-3 pb-3 space-y-3 text-xs">
-          {/* Moving Averages */}
+        <div className="space-y-3 px-3 pb-3 text-xs">
           {filteredMaRows.length > 0 && (
-            <div>
-              <h4 className="text-muted font-bold mb-1">Médias Móveis</h4>
-              <table className="w-full">
-                <tbody>
-                  {filteredMaRows.map((row) => (
-                    <tr key={row.name} className="border-b border-card-border/50">
-                      <td className="py-0.5 text-muted">{row.name}</td>
-                      <td className="py-0.5 font-mono-num text-right">
+            <Section title="Medias moveis">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                {filteredMaRows.map((row) => {
+                  const above = price >= row.value
+                  return (
+                    <div key={row.name} className="rounded-md border border-card-border/70 bg-card/60 p-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-bold text-muted">{row.name}</span>
+                        <DirectionIcon ok={above} />
+                      </div>
+                      <div className="mt-2 truncate font-mono-num text-sm font-bold text-white" title={formatPrice(row.value)}>
                         {formatPrice(row.value)}
-                      </td>
-                      <td className="py-0.5 text-right w-8">
-                        {price >= row.value ? <svg className="w-3 h-3 text-bull inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg> : <svg className="w-3 h-3 text-bear inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </div>
+                      <div className={`mt-1 text-[10px] font-bold ${above ? 'text-bull' : 'text-bear'}`}>
+                        {above ? 'Preco acima' : 'Preco abaixo'}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </Section>
           )}
 
-          {/* MACD */}
-          {toggles.macd && (
-            <div>
-              <h4 className="text-muted font-bold mb-1">MACD</h4>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-muted">Histograma:</span>
-                  <span className={`font-mono-num font-bold ${macd.histogram >= 0 ? 'text-bull' : 'text-bear'}`}>
-                    {macd.histogram.toFixed(4)}
-                  </span>
+          <div className="grid gap-3 lg:grid-cols-2">
+            {toggles.macd && (
+              <Section title="MACD">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <MetricCard
+                    label="Histograma"
+                    value={macd.histogram.toFixed(4)}
+                    tone={macd.histogram >= 0 ? 'bull' : 'bear'}
+                    detail={getMacdTrendText(macd.trend, macd.histogram)}
+                  />
+                  <MetricCard
+                    label="Divergencia"
+                    value={macd.divergence ? `DIV ${macd.divergence.toUpperCase()}` : 'Sem divergencia'}
+                    tone={macd.divergence === 'bullish' ? 'bull' : macd.divergence === 'bearish' ? 'bear' : 'neutral'}
+                    detail={`MACD ${macd.macd.toFixed(4)} / Signal ${macd.signal.toFixed(4)}`}
+                  />
                 </div>
-                <div className="text-muted">
-                  {getMacdTrendText(macd.trend, macd.histogram)}
+              </Section>
+            )}
+
+            {toggles.stochRsi && (
+              <Section title="StochRSI">
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <MetricCard label="K" value={stochRsi.k.toFixed(2)} />
+                  <MetricCard label="D" value={stochRsi.d.toFixed(2)} />
+                  <div className={`rounded-md border px-3 py-2 ${getZoneClass(stochRsi.zone)}`}>
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.06em] opacity-75">Zona</div>
+                    <div className="mt-1 text-sm font-bold">{getZoneLabel(stochRsi.zone)}</div>
+                    {(stochRsi.persistentOverbought || stochRsi.persistentOversold) && (
+                      <div className="mt-1 text-[10px] font-bold">PERSISTENTE</div>
+                    )}
+                  </div>
                 </div>
-                {macd.divergence && (
-                  <span
-                    className={`inline-block px-1.5 py-0.5 text-[10px] font-bold rounded ${
-                      macd.divergence === 'bullish'
-                        ? 'bg-bull/20 text-bull'
-                        : 'bg-bear/20 text-bear'
-                    }`}
-                  >
-                    DIV {macd.divergence === 'bullish' ? 'BULLISH' : 'BEARISH'}
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
+              </Section>
+            )}
+          </div>
 
-          {/* StochRSI */}
-          {toggles.stochRsi && (
-            <div>
-              <h4 className="text-muted font-bold mb-1">StochRSI</h4>
-              <div className="space-y-1">
-                <div className="flex items-center gap-3">
-                  <span className="text-muted">K: <span className="font-mono-num text-white">{stochRsi.k.toFixed(2)}</span></span>
-                  <span className="text-muted">D: <span className="font-mono-num text-white">{stochRsi.d.toFixed(2)}</span></span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`font-bold ${zoneColor}`}>{zoneLabel}</span>
-                  {(stochRsi.persistentOverbought || stochRsi.persistentOversold) && (
-                    <span className="px-1.5 py-0.5 text-[10px] font-bold bg-warn/20 text-warn rounded">
-                      PERSISTENTE
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {toggles.rsi && rsi && (
+              <MetricCard
+                label="RSI"
+                value={rsi.value.toFixed(2)}
+                tone={rsi.zone === 'oversold' ? 'bull' : rsi.zone === 'overbought' ? 'bear' : 'warn'}
+                detail={`${getZoneLabel(rsi.zone)}${rsi.divergence ? ` - DIV ${rsi.divergence.toUpperCase()}` : ''}`}
+              />
+            )}
 
-          {/* RSI */}
-          {toggles.rsi && rsi && (
-            <div>
-              <h4 className="text-muted font-bold mb-1">RSI</h4>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-muted">Valor:</span>
-                  <span className="font-mono-num font-bold text-white">{rsi.value.toFixed(2)}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`font-bold ${
-                    rsi.zone === 'overbought' ? 'text-bear' :
-                    rsi.zone === 'oversold' ? 'text-bull' : 'text-warn'
-                  }`}>
-                    {rsi.zone === 'overbought' ? 'SOBRECOMPRA' :
-                     rsi.zone === 'oversold' ? 'SOBREVENDA' : 'NEUTRO'}
-                  </span>
-                  {rsi.divergence && (
-                    <span
-                      className={`inline-block px-1.5 py-0.5 text-[10px] font-bold rounded ${
-                        rsi.divergence === 'bullish'
-                          ? 'bg-bull/20 text-bull'
-                          : 'bg-bear/20 text-bear'
-                      }`}
-                    >
-                      DIV {rsi.divergence === 'bullish' ? 'BULLISH' : 'BEARISH'}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+            {toggles.bollingerBands && bollingerBands && (
+              <MetricCard
+                label="Bollinger Bands"
+                value={`${bollingerBands.percentB.toFixed(2)} %B`}
+                tone={bollingerBands.squeeze ? 'warn' : 'neutral'}
+                detail={`Sup ${formatPrice(bollingerBands.upper)} / Inf ${formatPrice(bollingerBands.lower)} / Larg ${bollingerBands.width.toFixed(1)}%${bollingerBands.squeeze ? ' / SQUEEZE' : ''}`}
+              />
+            )}
 
-          {/* Bollinger Bands */}
-          {toggles.bollingerBands && bollingerBands && (
-            <div>
-              <h4 className="text-muted font-bold mb-1">Bollinger Bands</h4>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-muted">Superior:</span>
-                  <span className="font-mono-num text-white">{formatPrice(bollingerBands.upper)}</span>
-                  <span className="text-muted">|</span>
-                  <span className="text-muted">Inferior:</span>
-                  <span className="font-mono-num text-white">{formatPrice(bollingerBands.lower)}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-muted">Largura:</span>
-                  <span className="font-mono-num text-white">{bollingerBands.width.toFixed(1)}%</span>
-                  <span className="text-muted">|</span>
-                  <span className="text-muted">%B:</span>
-                  <span className="font-mono-num text-white">{bollingerBands.percentB.toFixed(2)}</span>
-                </div>
-                {bollingerBands.squeeze && (
-                  <span className="inline-block px-1.5 py-0.5 text-[10px] font-bold bg-warn/20 text-warn rounded">
-                    SQUEEZE
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
+            {toggles.atr && atr && (
+              <MetricCard label="ATR" value={atr.value.toFixed(2)} detail={`${atr.percent.toFixed(2)}% de variacao media`} />
+            )}
 
-          {/* ATR */}
-          {toggles.atr && atr && (
-            <div className="flex items-center gap-2">
-              <span className="text-muted font-bold">ATR:</span>
-              <span className="font-mono-num text-white">{atr.value.toFixed(2)}</span>
-              <span className="font-mono-num text-muted">({atr.percent.toFixed(2)}%)</span>
-            </div>
-          )}
+            {toggles.adx && adx && (
+              <MetricCard
+                label="ADX"
+                value={adx.value.toFixed(1)}
+                tone={adx.trending ? 'bull' : 'neutral'}
+                detail={`+DI ${adx.plusDI.toFixed(1)} / -DI ${adx.minusDI.toFixed(1)}${adx.trending ? ' / Tendencia' : ' / Lateral'}`}
+              />
+            )}
 
-          {/* ADX */}
-          {toggles.adx && adx && (
-            <div>
-              <h4 className="text-muted font-bold mb-1">ADX</h4>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-muted">ADX:</span>
-                  <span className="font-mono-num font-bold text-white">{adx.value.toFixed(1)}</span>
-                  {adx.trending && (
-                    <span className="inline-block px-1.5 py-0.5 text-[10px] font-bold bg-bull/20 text-bull rounded">
-                      TENDÊNCIA
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-muted">+DI:</span>
-                  <span className="font-mono-num text-white">{adx.plusDI.toFixed(1)}</span>
-                  <span className="text-muted">|</span>
-                  <span className="text-muted">-DI:</span>
-                  <span className="font-mono-num text-white">{adx.minusDI.toFixed(1)}</span>
-                </div>
-              </div>
-            </div>
-          )}
+            {toggles.vwap && vwap && (
+              <MetricCard
+                label="VWAP"
+                value={formatPrice(vwap.value)}
+                tone={vwap.priceAbove ? 'bull' : 'bear'}
+                detail={vwap.priceAbove ? 'Preco acima da VWAP' : 'Preco abaixo da VWAP'}
+              />
+            )}
 
-          {/* VWAP */}
-          {toggles.vwap && vwap && (
-            <div className="flex items-center gap-2">
-              <span className="text-muted font-bold">VWAP:</span>
-              <span className="font-mono-num text-white">{formatPrice(vwap.value)}</span>
-              <span className="flex items-center gap-1">{vwap.priceAbove ? <><svg className="w-3 h-3 text-bull inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg> Acima</> : <><svg className="w-3 h-3 text-bear inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Abaixo</>}</span>
-            </div>
-          )}
+            {toggles.williamsR !== false && indicators.williamsR && (
+              <MetricCard
+                label="Williams %R"
+                value={indicators.williamsR.value.toFixed(2)}
+                tone={indicators.williamsR.zone === 'oversold' ? 'bull' : indicators.williamsR.zone === 'overbought' ? 'bear' : 'warn'}
+                detail={getZoneLabel(indicators.williamsR.zone)}
+              />
+            )}
 
-          {/* Williams %R */}
-          {toggles.williamsR !== false && indicators.williamsR && (
-            <div className="space-y-1">
-              <h4 className="text-xs font-bold text-[var(--color-text)]">Williams %R</h4>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted">Valor:</span>
-                <span className={`text-xs font-mono-num font-bold ${
-                  indicators.williamsR.zone === 'oversold' ? 'text-bull' :
-                  indicators.williamsR.zone === 'overbought' ? 'text-bear' : 'text-warn'
-                }`}>{indicators.williamsR.value.toFixed(2)}</span>
-              </div>
-              <div className={`text-xs font-bold ${
-                indicators.williamsR.zone === 'oversold' ? 'text-bull' :
-                indicators.williamsR.zone === 'overbought' ? 'text-bear' : 'text-warn'
-              }`}>
-                {indicators.williamsR.zone === 'oversold' ? 'SOBREVENDA' :
-                 indicators.williamsR.zone === 'overbought' ? 'SOBRECOMPRA' : 'NEUTRO'}
-              </div>
-            </div>
-          )}
+            {toggles.cci !== false && indicators.cci && (
+              <MetricCard
+                label="CCI"
+                value={indicators.cci.value.toFixed(2)}
+                tone={indicators.cci.zone === 'oversold' ? 'bull' : indicators.cci.zone === 'overbought' ? 'bear' : 'warn'}
+                detail={getZoneLabel(indicators.cci.zone)}
+              />
+            )}
 
-          {/* CCI */}
-          {toggles.cci !== false && indicators.cci && (
-            <div className="space-y-1">
-              <h4 className="text-xs font-bold text-[var(--color-text)]">CCI</h4>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted">Valor:</span>
-                <span className={`text-xs font-mono-num font-bold ${
-                  indicators.cci.zone === 'oversold' ? 'text-bull' :
-                  indicators.cci.zone === 'overbought' ? 'text-bear' : 'text-warn'
-                }`}>{indicators.cci.value.toFixed(2)}</span>
-              </div>
-              <div className={`text-xs font-bold ${
-                indicators.cci.zone === 'oversold' ? 'text-bull' :
-                indicators.cci.zone === 'overbought' ? 'text-bear' : 'text-warn'
-              }`}>
-                {indicators.cci.zone === 'oversold' ? 'SOBREVENDA' :
-                 indicators.cci.zone === 'overbought' ? 'SOBRECOMPRA' : 'NEUTRO'}
-              </div>
-            </div>
-          )}
+            {toggles.mfi !== false && indicators.mfi && (
+              <MetricCard
+                label="MFI"
+                value={indicators.mfi.value.toFixed(2)}
+                tone={indicators.mfi.zone === 'oversold' ? 'bull' : indicators.mfi.zone === 'overbought' ? 'bear' : 'warn'}
+                detail={getZoneLabel(indicators.mfi.zone)}
+              />
+            )}
 
-          {/* MFI */}
-          {toggles.mfi !== false && indicators.mfi && (
-            <div className="space-y-1">
-              <h4 className="text-xs font-bold text-[var(--color-text)]">MFI</h4>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted">Valor:</span>
-                <span className={`text-xs font-mono-num font-bold ${
-                  indicators.mfi.zone === 'oversold' ? 'text-bull' :
-                  indicators.mfi.zone === 'overbought' ? 'text-bear' : 'text-warn'
-                }`}>{indicators.mfi.value.toFixed(2)}</span>
-              </div>
-              <div className={`text-xs font-bold ${
-                indicators.mfi.zone === 'oversold' ? 'text-bull' :
-                indicators.mfi.zone === 'overbought' ? 'text-bear' : 'text-warn'
-              }`}>
-                {indicators.mfi.zone === 'oversold' ? 'SOBREVENDA' :
-                 indicators.mfi.zone === 'overbought' ? 'SOBRECOMPRA' : 'NEUTRO'}
-              </div>
-            </div>
-          )}
+            {toggles.obv !== false && indicators.obv && (
+              <MetricCard
+                label="OBV"
+                value={formatVolume(indicators.obv.value)}
+                tone={indicators.obv.trend === 'rising' ? 'bull' : indicators.obv.trend === 'falling' ? 'bear' : 'warn'}
+                detail={indicators.obv.trend === 'rising' ? 'Crescente' : indicators.obv.trend === 'falling' ? 'Decrescente' : 'Lateral'}
+              />
+            )}
 
-          {/* OBV */}
-          {toggles.obv !== false && indicators.obv && (
-            <div className="space-y-1">
-              <h4 className="text-xs font-bold text-[var(--color-text)]">OBV</h4>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted">Valor:</span>
-                <span className="text-xs font-mono-num font-bold text-white">{formatVolume(indicators.obv.value)}</span>
-              </div>
-              <div className={`text-xs font-bold ${
-                indicators.obv.trend === 'rising' ? 'text-bull' :
-                indicators.obv.trend === 'falling' ? 'text-bear' : 'text-warn'
-              }`}>
-                {indicators.obv.trend === 'rising' ? '\u2191 Crescente' :
-                 indicators.obv.trend === 'falling' ? '\u2193 Decrescente' : '\u2192 Lateral'}
-              </div>
-            </div>
-          )}
+            {toggles.parabolicSar !== false && indicators.parabolicSar && (
+              <MetricCard
+                label="Parabolic SAR"
+                value={formatPrice(indicators.parabolicSar.value)}
+                tone={indicators.parabolicSar.trend === 'bullish' ? 'bull' : 'bear'}
+                detail={indicators.parabolicSar.trend === 'bullish' ? 'Bullish, preco acima do SAR' : 'Bearish, preco abaixo do SAR'}
+              />
+            )}
 
-          {/* Parabolic SAR */}
-          {toggles.parabolicSar !== false && indicators.parabolicSar && (
-            <div className="space-y-1">
-              <h4 className="text-xs font-bold text-[var(--color-text)]">Parabolic SAR</h4>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted">Valor:</span>
-                <span className="text-xs font-mono-num font-bold text-white">{formatPrice(indicators.parabolicSar.value)}</span>
-              </div>
-              <div className={`text-xs font-bold ${
-                indicators.parabolicSar.trend === 'bullish' ? 'text-bull' : 'text-bear'
-              }`}>
-                {indicators.parabolicSar.trend === 'bullish' ? 'Bullish (Preco acima do SAR)' : 'Bearish (Preco abaixo do SAR)'}
-              </div>
-            </div>
-          )}
-
-          {/* Volume */}
-          {toggles.volume && (
-            <div>
-              <h4 className="text-muted font-bold mb-1">Volume</h4>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-muted">Atual:</span>
-                  <span className="font-mono-num">{formatVolume(volume.current)}</span>
-                  <span className="text-muted">Média:</span>
-                  <span className="font-mono-num">{formatVolume(volume.average)}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`inline-block w-3 h-3 rounded-sm ${volume.candleDirection === 'green' ? 'bg-bull' : 'bg-bear'}`} />
-                  {volume.isSpike && (
-                    <span className="px-1.5 py-0.5 text-[10px] font-bold bg-warn/20 text-warn rounded">
-                      <svg className="w-3 h-3 text-warn inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> SPIKE
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Smart Money moved to PairDetail SmartMoneyPanel tab */}
+            {toggles.volume && (
+              <MetricCard
+                label="Volume"
+                value={formatVolume(volume.current)}
+                tone={volume.candleDirection === 'green' ? 'bull' : 'bear'}
+                detail={`Media ${formatVolume(volume.average)}${volume.isSpike ? ' / SPIKE' : ''}`}
+              />
+            )}
+          </div>
         </div>
       )}
     </div>
