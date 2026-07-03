@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { EntryCheckResult, Trade, TradeStats } from '@bottrade/shared'
+import type { EntryCheckResult, StrategyProfile, Trade, TradeStats } from '@bottrade/shared'
 import { useStore } from '../store/useStore'
-import { emitAnalyzePair, emitGetPaperStats, emitGetPaperTrades, emitGetTradeStats } from '../hooks/useSocket'
+import { emitAnalyzePair, emitGetPaperStats, emitGetPaperTrades, emitGetTradeStats, emitUpdateSettings } from '../hooks/useSocket'
 import { formatDateTime, formatPrice } from '../utils/format'
+import toast from 'react-hot-toast'
 
 function downloadFile(content: string, filename: string, type: string) {
   const blob = new Blob([content], { type })
@@ -154,13 +155,75 @@ function PaperEntryCheckCard({ symbol, check }: { symbol: string; check: EntryCh
   )
 }
 
+function PaperProfilesPanel({
+  pairs,
+  profiles,
+  assignments,
+  onAssign,
+}: {
+  pairs: string[]
+  profiles: StrategyProfile[]
+  assignments: Record<string, string>
+  onAssign: (symbol: string, profileId: string) => void
+}) {
+  return (
+    <div className="rounded-xl border border-card-border bg-card/90">
+      <div className="flex flex-col gap-2 border-b border-card-border p-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h3 className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Perfis do paper trade</h3>
+          <p className="mt-1 text-[11px] text-dim">Aplique regras especificas para as entradas simuladas de cada par monitorado.</p>
+        </div>
+        <span className="w-fit rounded-full border border-accent/25 bg-accent/10 px-2.5 py-1 text-[10px] font-bold text-accent">
+          {profiles.length} perfis
+        </span>
+      </div>
+
+      {profiles.length === 0 ? (
+        <div className="p-3 text-sm text-muted">Crie perfis em Config para aplicar regras especificas ao paper.</div>
+      ) : pairs.length === 0 ? (
+        <div className="p-3 text-sm text-muted">Adicione pares aos favoritos para configurar o paper por par.</div>
+      ) : (
+        <div className="grid gap-2 p-3 md:grid-cols-2 xl:grid-cols-3">
+          {pairs.map((symbol) => {
+            const assignedProfileId = assignments[symbol] ?? ''
+            const assignedProfile = profiles.find((profile) => profile.id === assignedProfileId)
+            return (
+              <div key={symbol} className="rounded-lg border border-card-border/75 bg-bg/25 p-3">
+                <div className="mb-2 min-w-0">
+                  <div className="truncate font-mono-num text-sm font-black text-white">{symbol}</div>
+                  <div className="mt-1 text-[11px] text-muted">
+                    {assignedProfile ? assignedProfile.name : 'Configuracao global'}
+                  </div>
+                </div>
+                <select
+                  value={assignedProfileId}
+                  onChange={(e) => onAssign(symbol, e.target.value)}
+                  className="w-full rounded-lg border border-card-border bg-card px-3 py-2 text-xs text-white outline-none focus:border-accent"
+                >
+                  <option value="">Global</option>
+                  {profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
+                </select>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function PaperPage() {
+  const settings = useStore((s) => s.settings)
+  const setSettings = useStore((s) => s.setSettings)
   const selectPair = useStore((s) => s.selectPair)
   const setTempAnalysis = useStore((s) => s.setTempAnalysis)
   const favorites = useStore((s) => s.favorites)
   const allPairs = useStore((s) => s.allPairs)
   const navigateTo = useStore((s) => s.navigateTo)
   const paperEntryChecks = useStore((s) => s.paperEntryChecks)
+  const profiles = settings.strategyProfiles ?? []
+  const paperAssignments = settings.paperProfileAssignments ?? {}
+  const assignablePairs = favorites.length > 0 ? favorites : (settings.favorites?.length ? settings.favorites : settings.pairs)
 
   const navigateToPair = (symbol: string) => {
     if (favorites.includes(symbol)) {
@@ -226,6 +289,24 @@ export default function PaperPage() {
     return { currentPrice, displayPnl: livePnl }
   }
 
+  const assignPaperProfile = (symbol: string, profileId: string) => {
+    const nextAssignments = { ...(settings.paperProfileAssignments ?? {}) }
+    if (profileId) nextAssignments[symbol] = profileId
+    else delete nextAssignments[symbol]
+
+    const nextSettings = { ...settings, paperProfileAssignments: nextAssignments }
+    setSettings(nextSettings)
+    emitUpdateSettings({ paperProfileAssignments: nextAssignments })
+      .then((updated) => {
+        setSettings(updated)
+        toast.success('Perfil do paper atualizado')
+      })
+      .catch((error) => {
+        setSettings(settings)
+        toast.error(error instanceof Error ? error.message : 'Erro ao salvar perfil do paper')
+      })
+  }
+
   return (
     <div className="h-full flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top_right,rgba(67,233,178,0.07),transparent_30%),var(--color-bg)] p-3 md:p-5">
       <div className="mx-auto max-w-7xl space-y-4">
@@ -249,6 +330,13 @@ export default function PaperPage() {
         {loading && trades.length === 0 && (
           <div className="rounded-xl border border-card-border bg-card/90 px-4 py-12 text-center text-muted">Carregando...</div>
         )}
+
+        <PaperProfilesPanel
+          pairs={assignablePairs}
+          profiles={profiles}
+          assignments={paperAssignments}
+          onAssign={assignPaperProfile}
+        />
 
         {(paperStats || favStats) && (
           <div className="grid gap-3 md:grid-cols-2">
