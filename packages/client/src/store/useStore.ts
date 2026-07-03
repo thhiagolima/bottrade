@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { PairAnalysis, PriceData, UserSettings, Trade, TradeStats, TradeRecommendation, BasicPairData, BacktestResult } from '@bottrade/shared'
+import type { PairAnalysis, PriceData, UserSettings, Trade, TradeStats, TradeRecommendation, BasicPairData, BacktestResult, EntryCheckResult } from '@bottrade/shared'
 
 interface AppState {
   // Auth
@@ -19,6 +19,7 @@ interface AppState {
   tradeStats: Record<string, TradeStats>
   globalStats: TradeStats | null
   tradeRecommendations: Record<string, TradeRecommendation>
+  paperEntryChecks: Record<string, EntryCheckResult>
   historyOpen: boolean
   selectedPair: string | null
   sidebarCollapsed: boolean
@@ -57,6 +58,7 @@ interface AppState {
   setTradeStats: (symbol: string, stats: TradeStats) => void
   setGlobalStats: (stats: TradeStats | null) => void
   setTradeRecommendation: (symbol: string, recommendation: TradeRecommendation) => void
+  setPaperEntryCheck: (symbol: string, check: EntryCheckResult) => void
   toggleHistory: () => void
   selectPair: (symbol: string) => void
   toggleSidebar: () => void
@@ -132,6 +134,7 @@ export const useStore = create<AppState>((set, get) => ({
   tradeStats: {},
   globalStats: null,
   tradeRecommendations: {},
+  paperEntryChecks: {},
   historyOpen: false,
   selectedPair: null,
   sidebarCollapsed: false,
@@ -287,6 +290,10 @@ export const useStore = create<AppState>((set, get) => ({
 
   setTradeRecommendation: (symbol: string, recommendation: TradeRecommendation) => {
     set({ tradeRecommendations: { ...get().tradeRecommendations, [symbol]: recommendation } })
+  },
+
+  setPaperEntryCheck: (symbol: string, check: EntryCheckResult) => {
+    set({ paperEntryChecks: { ...get().paperEntryChecks, [symbol]: check } })
   },
 
   toggleHistory: () => {

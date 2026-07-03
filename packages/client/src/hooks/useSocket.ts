@@ -20,6 +20,7 @@ export function useSocket(): void {
   const setOpenTrade = useStore((state) => state.setOpenTrade)
   const removeOpenTrade = useStore((state) => state.removeOpenTrade)
   const setTradeRecommendation = useStore((state) => state.setTradeRecommendation)
+  const setPaperEntryCheck = useStore((state) => state.setPaperEntryCheck)
 
   const authToken = useStore((state) => state.authToken)
 
@@ -61,6 +62,20 @@ export function useSocket(): void {
       const existing = pairs[data.symbol]
       if (existing) {
         updateAnalysis({ ...existing, entryCheck: data.check })
+      }
+    })
+
+    socket.on('paper-entry-check', (data: { symbol: string; check: import('@bottrade/shared').EntryCheckResult }) => {
+      setPaperEntryCheck(data.symbol, data.check)
+      if (!data.check.allowed) {
+        const failed = data.check.filters.filter((filter) => !filter.passed).map((filter) => filter.name).join(', ')
+        showAlert({
+          type: 'full-alignment',
+          symbol: data.symbol,
+          message: `Paper bloqueado: ${failed || 'filtros de entrada'}`,
+          severity: 'warning',
+          timestamp: Date.now(),
+        })
       }
     })
 

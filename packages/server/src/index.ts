@@ -243,6 +243,9 @@ async function getOrCreateSession(userId: number, io: Server): Promise<UserSessi
   })
 
   // Wire paper trade events to user's room
+  paperTracker.on('paper-entry-check', (data: { symbol: string; check: import('@bottrade/shared').EntryCheckResult }) => {
+    io.to(`user:${userId}`).emit('paper-entry-check', data)
+  })
   paperTracker.on('paper-trade-opened', (trade: Trade) => { io.to(`user:${userId}`).emit('paper-trade-opened', trade) })
   paperTracker.on('paper-trade-closed', (trade: Trade) => { io.to(`user:${userId}`).emit('paper-trade-closed', trade) })
   paperTracker.on('paper-trade-partial', (data: unknown) => { io.to(`user:${userId}`).emit('paper-trade-partial', data) })

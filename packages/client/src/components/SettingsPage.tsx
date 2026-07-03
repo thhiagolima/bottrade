@@ -130,7 +130,7 @@ function NumberInput({ label, value, min, max, step = 1, onChange }: {
   )
 }
 
-type TabKey = 'geral' | 'indicadores' | 'score' | 'perfis' | 'integracoes' | 'conta'
+type TabKey = 'geral' | 'indicadores' | 'score' | 'perfis' | 'paper' | 'integracoes' | 'conta'
 
 function getTabsForMode(mode: UserMode): { key: TabKey; label: string }[] {
   switch (mode) {
@@ -150,6 +150,7 @@ function getTabsForMode(mode: UserMode): { key: TabKey; label: string }[] {
       { key: 'indicadores', label: 'Indicadores' },
       { key: 'score', label: 'Score' },
       { key: 'perfis', label: 'Perfis' },
+      { key: 'paper', label: 'Paper' },
       { key: 'integracoes', label: 'Integracoes' },
       { key: 'conta', label: 'Conta' },
     ]
@@ -757,34 +758,22 @@ export default function SettingsPage() {
               <div className="pt-3 mt-2 border-t-2 border-card-border">
                 <Section title="Aplicar Perfis aos Pares">
                   <div className="text-[10px] text-muted -mt-1 mb-2">
-                    Esta area apenas escolhe qual perfil sera usado em cada par. Ela nao altera os parametros do perfil.
+                    Escolha qual perfil sera usado no monitoramento de cada par. O paper trade tem uma area propria na aba Paper.
                   </div>
                   {assignablePairs.length > 0 ? (
                     <div className="space-y-2">
-                      <div className="hidden sm:grid grid-cols-[minmax(0,1fr)_150px_150px] gap-2 px-2 text-[10px] text-muted font-bold uppercase tracking-wider">
+                      <div className="hidden sm:grid grid-cols-[minmax(0,1fr)_180px] gap-2 px-2 text-[10px] text-muted font-bold uppercase tracking-wider">
                         <span>Par</span>
                         <span>Monitoramento</span>
-                        <span>Paper trade</span>
                       </div>
                       {assignablePairs.map((symbol) => (
-                        <div key={symbol} className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_150px_150px] gap-2 sm:items-center bg-bg border border-card-border rounded px-2 py-2">
+                        <div key={symbol} className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_180px] gap-2 sm:items-center bg-bg border border-card-border rounded px-2 py-2">
                           <div className="text-xs font-mono-num font-bold text-white truncate">{symbol}</div>
                           <label className="space-y-1 sm:space-y-0">
                             <span className="sm:hidden block text-[10px] text-muted">Monitoramento</span>
                             <select
                               value={local.pairProfileAssignments?.[symbol] ?? ''}
                               onChange={(e) => assignProfile(symbol, e.target.value, 'live')}
-                              className="w-full px-2 py-1 bg-card border border-card-border rounded text-white text-xs h-7"
-                            >
-                              <option value="">Global</option>
-                              {profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
-                            </select>
-                          </label>
-                          <label className="space-y-1 sm:space-y-0">
-                            <span className="sm:hidden block text-[10px] text-muted">Paper trade</span>
-                            <select
-                              value={local.paperProfileAssignments?.[symbol] ?? ''}
-                              onChange={(e) => assignProfile(symbol, e.target.value, 'paper')}
                               className="w-full px-2 py-1 bg-card border border-card-border rounded text-white text-xs h-7"
                             >
                               <option value="">Global</option>
@@ -801,6 +790,66 @@ export default function SettingsPage() {
                   )}
                 </Section>
               </div>
+            </>
+          )}
+
+          {activeTab === 'paper' && (
+            <>
+              <Section title="Perfis do Paper Trade">
+                <div className="text-[10px] text-muted -mt-1 mb-2">
+                  Escolha quais perfis serao usados exclusivamente para as entradas simuladas do paper trade.
+                </div>
+                {profiles.length === 0 && (
+                  <div className="bg-bg border border-card-border rounded px-3 py-2 text-[11px] text-muted">
+                    Crie perfis na aba Perfis para aplicar regras especificas ao paper.
+                  </div>
+                )}
+                {assignablePairs.length > 0 ? (
+                  <div className="space-y-2">
+                    <div className="hidden sm:grid grid-cols-[minmax(0,1fr)_180px] gap-2 px-2 text-[10px] text-muted font-bold uppercase tracking-wider">
+                      <span>Par</span>
+                      <span>Perfil paper</span>
+                    </div>
+                    {assignablePairs.map((symbol) => {
+                      const assignedProfileId = local.paperProfileAssignments?.[symbol] ?? ''
+                      const assignedProfile = profiles.find((profile) => profile.id === assignedProfileId)
+                      return (
+                        <div key={symbol} className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_180px] gap-2 sm:items-center bg-bg border border-card-border rounded px-2 py-2">
+                          <div className="min-w-0">
+                            <div className="text-xs font-mono-num font-bold text-white truncate">{symbol}</div>
+                            <div className="text-[10px] text-muted mt-0.5">
+                              {assignedProfile
+                                ? `Paper: ${assignedProfile.name}`
+                                : 'Paper usa configuracao global'}
+                            </div>
+                          </div>
+                          <label className="space-y-1 sm:space-y-0">
+                            <span className="sm:hidden block text-[10px] text-muted">Perfil paper</span>
+                            <select
+                              value={assignedProfileId}
+                              onChange={(e) => assignProfile(symbol, e.target.value, 'paper')}
+                              className="w-full px-2 py-1 bg-card border border-card-border rounded text-white text-xs h-7"
+                            >
+                              <option value="">Global</option>
+                              {profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
+                            </select>
+                          </label>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="bg-bg border border-card-border rounded px-3 py-2 text-[11px] text-muted">
+                    Escolha pares no onboarding ou na lista de favoritos para aplicar perfis de paper individualmente.
+                  </div>
+                )}
+              </Section>
+
+              <Section title="Como o Paper Decide Entradas">
+                <div className="rounded bg-bg border border-card-border px-3 py-2 text-[11px] text-muted leading-relaxed">
+                  O paper recalcula o sinal usando o perfil escolhido nesta aba e so abre entrada se o sinal for de alta confianca e passar pelos filtros de score, multi-timeframe, ADX, volume, funding, long/short ratio e cooldown.
+                </div>
+              </Section>
             </>
           )}
 

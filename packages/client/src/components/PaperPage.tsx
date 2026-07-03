@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { Trade, TradeStats } from '@bottrade/shared'
+import type { EntryCheckResult, Trade, TradeStats } from '@bottrade/shared'
 import { useStore } from '../store/useStore'
 import { emitAnalyzePair, emitGetPaperStats, emitGetPaperTrades, emitGetTradeStats } from '../hooks/useSocket'
 import { formatDateTime, formatPrice } from '../utils/format'
@@ -128,12 +128,39 @@ function TradeMobileCard({
   )
 }
 
+function PaperEntryCheckCard({ symbol, check }: { symbol: string; check: EntryCheckResult }) {
+  const failed = check.filters.filter((filter) => !filter.passed)
+  const visibleFilters = failed.length > 0 ? failed : check.filters
+
+  return (
+    <div className={`rounded-xl border p-3 ${check.allowed ? 'border-bull/25 bg-bull/5' : 'border-warn/25 bg-warn/5'}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="font-mono-num text-sm font-black text-white">{symbol}</div>
+          <div className="mt-1 text-[11px] text-muted">{check.passedCount}/{check.totalCount} filtros aprovados</div>
+        </div>
+        <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${check.allowed ? 'bg-bull/15 text-bull' : 'bg-warn/15 text-warn'}`}>
+          {check.allowed ? 'LIBERADO' : 'BLOQUEADO'}
+        </span>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {visibleFilters.slice(0, 4).map((filter) => (
+          <span key={filter.name} className={`rounded-full px-2 py-1 text-[10px] font-bold ${filter.passed ? 'bg-bull/10 text-bull' : 'bg-bg/60 text-warn'}`}>
+            {filter.name}{filter.detail ? `: ${filter.detail}` : ''}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function PaperPage() {
   const selectPair = useStore((s) => s.selectPair)
   const setTempAnalysis = useStore((s) => s.setTempAnalysis)
   const favorites = useStore((s) => s.favorites)
   const allPairs = useStore((s) => s.allPairs)
   const navigateTo = useStore((s) => s.navigateTo)
+  const paperEntryChecks = useStore((s) => s.paperEntryChecks)
 
   const navigateToPair = (symbol: string) => {
     if (favorites.includes(symbol)) {
@@ -185,6 +212,9 @@ export default function PaperPage() {
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
   const sortedTrades = [...trades.filter(t => t.status === 'OPEN'), ...trades.filter(t => t.status !== 'OPEN')]
+  const recentPaperChecks = Object.entries(paperEntryChecks)
+    .filter(([symbol]) => !filterSymbol || symbol === filterSymbol)
+    .sort(([a], [b]) => a.localeCompare(b))
 
   const getLivePnl = (trade: Trade) => {
     const isOpen = trade.status === 'OPEN'
@@ -235,6 +265,20 @@ export default function PaperPage() {
             <StatBox label="Losses" value={String(paperStats.losses)} color="text-bear" />
             <StatBox label="Avg Win" value={`${paperStats.avgWinPnl.toFixed(2)}%`} color="text-bull" />
             <StatBox label="Avg Loss" value={`${paperStats.avgLossPnl.toFixed(2)}%`} color="text-bear" />
+          </div>
+        )}
+
+        {recentPaperChecks.length > 0 && (
+          <div className="rounded-xl border border-card-border bg-card/90">
+            <div className="border-b border-card-border p-3">
+              <h3 className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Checks de entrada do paper</h3>
+              <p className="mt-1 text-[11px] text-dim">Mostra por que um sinal forte entrou ou foi bloqueado no paper.</p>
+            </div>
+            <div className="grid gap-2 p-3 md:grid-cols-2 xl:grid-cols-3">
+              {recentPaperChecks.map(([symbol, check]) => (
+                <PaperEntryCheckCard key={symbol} symbol={symbol} check={check} />
+              ))}
+            </div>
           </div>
         )}
 

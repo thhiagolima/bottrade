@@ -188,8 +188,8 @@ export class PaperTradeTracker extends EventEmitter {
     const filters: EntryFilter[] = []
 
     // Score threshold
-    const threshold = this.getDynamicThreshold()
-    const scoreOk = signal.direction === 'LONG' ? signal.confluenceScore >= threshold : signal.confluenceScore <= (100 - threshold)
+    const threshold = this.getDynamicThreshold(settings, signal.direction)
+    const scoreOk = signal.direction === 'LONG' ? signal.confluenceScore >= threshold : signal.confluenceScore <= threshold
     filters.push({ name: 'Score', passed: scoreOk, detail: `${signal.confluenceScore.toFixed(0)}% (threshold: ${threshold})` })
 
     // Multi-timeframe
@@ -240,10 +240,17 @@ export class PaperTradeTracker extends EventEmitter {
     return { allowed: filters.every(f => f.passed), filters, passedCount, totalCount: filters.length }
   }
 
-  private getDynamicThreshold(): number {
-    if (this.recentResults.length < 5) return BASE_THRESHOLD
+  private getDynamicThreshold(settings: UserSettings, direction: SignalData['direction']): number {
+    const configuredThreshold = direction === 'SHORT'
+      ? (settings.scoreConfig?.highConfidenceShort ?? (100 - BASE_THRESHOLD))
+      : (settings.scoreConfig?.highConfidenceLong ?? BASE_THRESHOLD)
+
+    if (this.recentResults.length < 5) return configuredThreshold
     const losses = this.recentResults.slice(-5).filter(r => r === 'LOSS').length
-    return losses >= 3 ? 90 : BASE_THRESHOLD
+    if (losses < 3) return configuredThreshold
+    return direction === 'SHORT'
+      ? Math.max(0, configuredThreshold - 5)
+      : Math.min(100, configuredThreshold + 5)
   }
 
   private calcPnl(trade: Trade, price: number): number {
