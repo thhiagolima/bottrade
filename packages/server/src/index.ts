@@ -1234,10 +1234,16 @@ async function main(): Promise<void> {
         // Emit only to this user's sockets
         io.to(`user:${userId}`).emit('settings-updated', sanitizeSettings(session.settings))
         io.to(`user:${userId}`).emit('favorites-updated', session.favorites)
+        if (typeof callback === 'function') {
+          ;(callback as (d: { success: boolean; favorites: string[] }) => void)({ success: true, favorites: session.favorites })
+        }
 
         await logAudit({ userId, action: 'FAVORITE_TOGGLE', details: { symbol, added: !isFav }, ip: undefined })
       } catch (err) {
         console.error('[Socket.io] Error toggling favorite:', (err as Error).message)
+        if (typeof callback === 'function') {
+          ;(callback as (d: { success: boolean; error: string }) => void)({ success: false, error: 'Nao foi possivel atualizar o par monitorado.' })
+        }
       }
     })
 
@@ -1614,7 +1620,7 @@ async function main(): Promise<void> {
       callback(candles)
     })
 
-    // Analyze a non-favorite pair on demand
+    // Analyze a monitored pair on demand. Non-favorites are discovery-only.
     socket.on('analyze-pair', async (data: unknown, callback: unknown) => {
       if (typeof callback !== 'function') return
       if (!checkSocketRate(socket.id)) {
@@ -1624,6 +1630,19 @@ async function main(): Promise<void> {
         const v = validate(analyzePairSchema, data)
         if (!v.success) { (callback as (d: null) => void)(null); return }
         const symbol = v.data.symbol
+
+        if (!session.favorites.includes(symbol)) {
+          socket.emit('plan-limit', {
+            feature: 'maxFavorites',
+            message: 'Adicione este par aos monitorados para ver a analise completa.',
+          })
+          ;(callback as (d: { success: false; error: string; reason: 'NOT_MONITORED' }) => void)({
+            success: false,
+            error: 'Par nao monitorado',
+            reason: 'NOT_MONITORED',
+          })
+          return
+        }
 
         // If already a favorite, return existing analysis
         const existing = state.get(symbol)

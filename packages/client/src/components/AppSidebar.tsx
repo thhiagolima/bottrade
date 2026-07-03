@@ -101,7 +101,7 @@ export default function AppSidebar() {
 
   const handleSelectPair = useCallback((symbol: string) => {
     if (!favorites.includes(symbol)) {
-      emitToggleFavorite(symbol)
+      return
     }
     selectPair(symbol)
     closeMobileSidebar()
@@ -336,17 +336,17 @@ function AllPairRow({
   const setTempAnalysis = useStore((s) => s.setTempAnalysis)
   const setAnalyzingPair = useStore((s) => s.setAnalyzingPair)
   const analyzingPair = useStore((s) => s.analyzingPair)
-  const selectPair = useStore((s) => s.selectPair)
   const isAnalyzing = analyzingPair === pair.symbol
 
-  const handleAnalyze = (e: React.MouseEvent) => {
+  const handleOpen = (e: React.MouseEvent) => {
     e.stopPropagation()
+    if (!isFavorite) return
+    onSelect(pair.symbol)
     setAnalyzingPair(pair.symbol)
     emitAnalyzePair(pair.symbol, (analysis) => {
       setAnalyzingPair(null)
       if (analysis) {
         setTempAnalysis(analysis)
-        selectPair(pair.symbol)
       }
     })
   }
@@ -356,17 +356,19 @@ function AllPairRow({
     emitToggleFavorite(pair.symbol)
   }
 
+  const handleMonitorClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    emitToggleFavorite(pair.symbol)
+  }
+
   const heatBg = heat?.label === 'QUENTE' ? 'bg-bear/10' : heat?.label === 'MORNO' ? 'bg-warn/10' : ''
 
   return (
     <div
-      className={`px-2 py-1.5 text-xs border-b border-card-border/30 transition-colors cursor-pointer ${heatBg} ${
+      className={`px-2 py-1.5 text-xs border-b border-card-border/30 transition-colors ${isFavorite ? 'cursor-pointer' : 'cursor-default'} ${heatBg} ${
         isSelected ? 'bg-card-border/50' : 'hover:bg-card-border/20'
       }`}
-      onClick={(e) => {
-        onSelect(pair.symbol)
-        handleAnalyze(e)
-      }}
+      onClick={isFavorite ? handleOpen : undefined}
     >
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-1.5 gap-y-0.5">
         <button
@@ -426,14 +428,16 @@ function AllPairRow({
           </>
         )}
         {(!heat || heat.label === 'FRIO') && (
-          <span className="text-[9px] text-muted truncate flex-1">Clique para analisar</span>
+          <span className="text-[9px] text-muted truncate flex-1">
+            {isFavorite ? 'Clique para abrir' : 'Adicione para monitorar'}
+          </span>
         )}
         <button
-          onClick={(e) => { e.stopPropagation(); onSelect(pair.symbol); handleAnalyze(e) }}
-          disabled={isAnalyzing}
+          onClick={isFavorite ? handleOpen : handleMonitorClick}
+          disabled={isFavorite && isAnalyzing}
           className="flex-shrink-0 px-1 py-0 text-[9px] font-bold bg-accent/20 text-accent rounded hover:bg-accent/30 transition-colors disabled:opacity-50"
         >
-          {isFavorite ? (isAnalyzing ? '...' : 'Abrir') : (isAnalyzing ? '...' : 'Add')}
+          {isFavorite ? (isAnalyzing ? '...' : 'Abrir') : 'Monitorar'}
         </button>
       </div>
     </div>

@@ -259,8 +259,10 @@ function DashboardPage() {
   const mobileSidebarOpen = useStore((s) => s.mobileSidebarOpen)
   const closeMobileSidebar = useStore((s) => s.closeMobileSidebar)
   const tempAnalysis = useStore((s) => s.tempAnalysis)
+  const favorites = useStore((s) => s.favorites)
 
-  const analysis = selectedPair
+  const selectedIsMonitored = selectedPair ? favorites.includes(selectedPair) : false
+  const analysis = selectedPair && selectedIsMonitored
     ? (pairs[selectedPair] ?? (tempAnalysis?.symbol === selectedPair ? tempAnalysis : null))
     : null
 

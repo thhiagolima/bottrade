@@ -262,8 +262,11 @@ export function useSocket(): void {
   }, [authToken, updatePrice, updateAnalysis, setAllPairs, setFavorites, setConnectionStatus, setServerConnected, setSettings, setSnapshot, setOpenTrade, removeOpenTrade, setTradeRecommendation])
 }
 
-export function emitToggleFavorite(symbol: string): void {
-  socket?.emit('toggle-favorite', { symbol })
+export function emitToggleFavorite(
+  symbol: string,
+  callback?: (result: { success: boolean; favorites?: string[]; error?: string }) => void
+): void {
+  socket?.emit('toggle-favorite', { symbol }, callback)
 }
 
 export function emitAddPair(symbol: string): void {
@@ -321,9 +324,15 @@ export function emitGetCandles(
 
 export function emitAnalyzePair(
   symbol: string,
-  callback: (analysis: PairAnalysis | null) => void
+  callback: (analysis: PairAnalysis | null, error?: string) => void
 ): void {
-  socket?.emit('analyze-pair', { symbol }, callback)
+  socket?.emit('analyze-pair', { symbol }, (response: PairAnalysis | { success: false; error?: string } | null) => {
+    if (response && 'success' in response && response.success === false) {
+      callback(null, response.error || 'Nao foi possivel analisar o par')
+      return
+    }
+    callback(response as PairAnalysis | null)
+  })
 }
 
 export function emitRunBacktest(
