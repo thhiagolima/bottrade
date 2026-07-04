@@ -342,6 +342,64 @@ async function main(): Promise<void> {
   // Global fallback settings (used for wsManager init and when no user session exists)
   let cachedSettings: UserSettings = settings
 
+  async function evaluatePaperEntryForMonitoredPair(session: UserSession, symbol: string, source: string): Promise<void> {
+    if (!session.favorites.includes(symbol)) return
+
+    const candles = wsManager.getCandles(symbol)
+    const priceData = wsManager.getPriceData(symbol)
+    if (!priceData || candles.length < config.candles.minForSignals) {
+      logger.info({ userId: session.userId, symbol, source, candles: candles.length }, 'Paper entry check skipped: insufficient market data')
+      return
+    }
+
+    const previousSignal = prevSignals.get(symbol)
+    const previousIndicators = prevIndicators.get(symbol) ?? null
+    const liveSettings = resolveStrategySettings(session.settings, symbol, 'live')
+    const paperSettings = resolveStrategySettings(session.settings, symbol, 'paper')
+    const indicators = calculateIndicators(candles as CandleData[], previousIndicators, paperSettings.indicatorPeriods)
+    const paperSignal = generateSignal(indicators, priceData, paperSettings, previousSignal)
+
+    let multiTimeframe: PairAnalysis['multiTimeframe']
+    let externalData: PairAnalysis['externalData']
+    const mtfBase: TimeframeAnalysis = {
+      interval: '15m',
+      direction: paperSignal.direction,
+      score: paperSignal.confluenceScore,
+      trend: paperSignal.direction === 'LONG' ? 'Bullish' : paperSignal.direction === 'SHORT' ? 'Bearish' : 'Lateral',
+      keyLevels: { ma20: indicators.ma20, ma50: indicators.ma50, ma200: indicators.ma200 },
+    }
+
+    const [mtfResult, externalResult] = await Promise.allSettled([
+      getMultiTimeframeData(symbol, mtfBase, paperSettings),
+      fetchExternalData(symbol),
+    ])
+    if (mtfResult.status === 'fulfilled') multiTimeframe = mtfResult.value
+    if (externalResult.status === 'fulfilled') externalData = externalResult.value
+
+    if (!state.has(symbol)) {
+      const liveSignal = generateSignal(indicators, priceData, liveSettings, previousSignal)
+      const analysis: PairAnalysis = {
+        symbol,
+        candles: candles.slice(-100),
+        indicators,
+        price: priceData,
+        signal: liveSignal,
+        lastUpdate: Date.now(),
+        multiTimeframe,
+        externalData,
+      }
+      state.set(symbol, analysis)
+      prevIndicators.set(symbol, indicators)
+      prevSignals.set(symbol, liveSignal)
+      io.to(`user:${session.userId}`).emit('analysis-update', analysis)
+    }
+
+    if (paperSignal.confidence === 'high' && paperSignal.direction !== 'NEUTRO') {
+      await session.paperTracker.evaluateAndOpen(symbol, paperSignal, indicators, priceData, paperSettings, multiTimeframe, externalData)
+      logger.info({ userId: session.userId, symbol, source, direction: paperSignal.direction, score: paperSignal.confluenceScore }, 'Paper entry evaluated after pair became monitored')
+    }
+  }
+
   // ── REST endpoints ──────────────────────────────────────────────────────
 
   // Health check (no auth required)
@@ -1253,6 +1311,12 @@ async function main(): Promise<void> {
           ;(callback as (d: { success: boolean; favorites: string[] }) => void)({ success: true, favorites: session.favorites })
         }
 
+        if (!isFav) {
+          void evaluatePaperEntryForMonitoredPair(session, symbol, 'favorite_toggle').catch((err) => {
+            logger.error({ err, userId, symbol }, 'Paper entry evaluation after favorite toggle failed')
+          })
+        }
+
         await logAudit({ userId, action: 'FAVORITE_TOGGLE', details: { symbol, added: !isFav }, ip: undefined })
       } catch (err) {
         console.error('[Socket.io] Error toggling favorite:', (err as Error).message)
@@ -1322,6 +1386,10 @@ async function main(): Promise<void> {
           ;(callback as (d: { success: boolean; favorites: string[] }) => void)({ success: true, favorites: session.favorites })
         }
 
+        void evaluatePaperEntryForMonitoredPair(session, addSymbol, 'favorite_replace').catch((err) => {
+          logger.error({ err, userId, symbol: addSymbol }, 'Paper entry evaluation after favorite replace failed')
+        })
+
         await logAudit({ userId, action: 'FAVORITE_REPLACE', details: { removeSymbol, addSymbol }, ip: undefined })
       } catch (err) {
         console.error('[Socket.io] Error replacing favorite:', (err as Error).message)
@@ -1354,6 +1422,9 @@ async function main(): Promise<void> {
         session.settings.pairs = session.favorites
         io.to(`user:${userId}`).emit('settings-updated', sanitizeSettings(session.settings))
         io.to(`user:${userId}`).emit('favorites-updated', session.favorites)
+        void evaluatePaperEntryForMonitoredPair(session, symbol, 'pair_add').catch((err) => {
+          logger.error({ err, userId, symbol }, 'Paper entry evaluation after pair add failed')
+        })
       } catch (err) {
         console.error('[Socket.io] Error adding pair:', (err as Error).message)
       }
@@ -1529,6 +1600,12 @@ async function main(): Promise<void> {
             allPairs: allPairsArr,
             favorites: session.favorites,
           })
+          const addedFavorites = session.favorites.filter((symbol) => !previousFavorites.includes(symbol))
+          for (const symbol of addedFavorites) {
+            void evaluatePaperEntryForMonitoredPair(session, symbol, 'settings_update').catch((err) => {
+              logger.error({ err, userId, symbol }, 'Paper entry evaluation after settings update failed')
+            })
+          }
         }
 
         if (typeof callback === 'function') {
@@ -1708,7 +1785,7 @@ async function main(): Promise<void> {
     socket.on('analyze-pair', async (data: unknown, callback: unknown) => {
       if (typeof callback !== 'function') return
       if (!checkSocketRate(socket.id)) {
-        return (callback as (d: null) => void)(null)
+        return (callback as (d: { success: false; error: string }) => void)({ success: false, error: 'Muitas solicitacoes. Aguarde alguns segundos e tente novamente.' })
       }
       try {
         const v = validate(analyzePairSchema, data)
@@ -1786,7 +1863,7 @@ async function main(): Promise<void> {
 
         const v = validate(backtestParamsSchema, data)
         if (!v.success) {
-          (callback as (d: null) => void)(null)
+          ;(callback as (d: { success: false; error: string }) => void)({ success: false, error: 'Parametros de backtest invalidos.' })
           return
         }
         const params = v.data as BacktestParams

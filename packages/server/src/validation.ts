@@ -140,7 +140,9 @@ export const executeOrderSchema = z.object({
 export const backtestParamsSchema = z.object({
   symbols: z.array(symbolSchema).min(1).max(10),
   period: z.enum(['7d', '30d', '90d']),
-  scoreThreshold: z.number().min(50).max(100).optional(),
+  scoreThreshold: z.number().min(50).max(100).optional().default(85),
+  leverage: z.number().min(1).max(125).optional().default(1),
+  baseCapital: z.number().min(1).max(1000000).optional().default(100),
   stopLossPercent: z.number().min(0.1).max(10).optional(),
   takeProfitPercent: z.number().min(0.1).max(20).optional(),
 })

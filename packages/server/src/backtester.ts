@@ -27,13 +27,16 @@ export function runBacktest(
 ): BacktestResult {
   const trades: BacktestTrade[] = []
   const equityCurve: { timestamp: number; equity: number }[] = []
-  let equity = params.baseCapital
+  const baseCapital = params.baseCapital ?? 100
+  const leverage = params.leverage ?? 1
+  const scoreThreshold = params.scoreThreshold ?? 85
+  let equity = baseCapital
 
   // Build settings for signal generation
   const settings: UserSettings = {
     userMode: 'pro',
-    baseCapital: params.baseCapital,
-    leverage: params.leverage,
+    baseCapital,
+    leverage,
     fundingThreshold: 0.05,
     stochRsiHighThreshold: 90,
     stochRsiLowThreshold: 10,
@@ -64,7 +67,7 @@ export function runBacktest(
           const pnlPercent = currentPosition.direction === 'LONG'
             ? ((exitResult.price - currentPosition.entryPrice) / currentPosition.entryPrice) * 100
             : ((currentPosition.entryPrice - exitResult.price) / currentPosition.entryPrice) * 100
-          const pnlValue = (pnlPercent / 100) * params.baseCapital * params.leverage
+          const pnlValue = (pnlPercent / 100) * baseCapital * leverage
 
           trades.push({
             symbol,
@@ -109,7 +112,7 @@ export function runBacktest(
         !currentPosition &&
         signal.confidence === 'high' &&
         signal.direction !== 'NEUTRO' &&
-        signal.confluenceScore >= params.scoreThreshold &&
+        isSignalAboveThreshold(signal.direction, signal.confluenceScore, scoreThreshold) &&
         signal.riskManagement
       ) {
         currentPosition = {
@@ -132,7 +135,7 @@ export function runBacktest(
       const pnlPercent = currentPosition.direction === 'LONG'
         ? ((lastCandle.close - currentPosition.entryPrice) / currentPosition.entryPrice) * 100
         : ((currentPosition.entryPrice - lastCandle.close) / currentPosition.entryPrice) * 100
-      const pnlValue = (pnlPercent / 100) * params.baseCapital * params.leverage
+      const pnlValue = (pnlPercent / 100) * baseCapital * leverage
 
       trades.push({
         symbol,
@@ -157,7 +160,7 @@ export function runBacktest(
   trades.sort((a, b) => a.entryTime - b.entryTime)
 
   // Calculate stats
-  const stats = calculateStats(trades, params.baseCapital)
+  const stats = calculateStats(trades, baseCapital)
 
   // Per-symbol breakdown
   const perSymbol: Record<string, { trades: number; winRate: number; pnl: number }> = {}
@@ -183,6 +186,10 @@ export function runBacktest(
     equityCurve,
     perSymbol,
   }
+}
+
+function isSignalAboveThreshold(direction: 'LONG' | 'SHORT', score: number, threshold: number): boolean {
+  return direction === 'LONG' ? score >= threshold : score <= 100 - threshold
 }
 
 function checkCandleForExit(

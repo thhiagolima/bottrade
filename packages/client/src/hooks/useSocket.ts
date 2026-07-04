@@ -375,9 +375,19 @@ export function emitAnalyzePair(
 
 export function emitRunBacktest(
   params: BacktestParams,
-  callback: (result: BacktestResult | null) => void
+  callback: (result: BacktestResult | null, error?: string) => void
 ): void {
-  socket?.emit('run-backtest', params, callback)
+  if (!socket?.connected) {
+    callback(null, 'Socket desconectado')
+    return
+  }
+  socket.emit('run-backtest', params, (response: BacktestResult | { success: false; error: string } | null) => {
+    if (response && 'success' in response && response.success === false) {
+      callback(null, response.error)
+      return
+    }
+    callback(response as BacktestResult | null)
+  })
 }
 
 export function emitGetPerformance(

@@ -327,10 +327,17 @@ describe('backtestParamsSchema', () => {
       symbols: ['ETHUSDT'],
       period: '90d',
       scoreThreshold: 85,
+      leverage: 5,
+      baseCapital: 100,
       stopLossPercent: 2,
       takeProfitPercent: 6,
     })
     expect(result.success).toBe(true)
+  })
+
+  it('rejects invalid leverage and capital', () => {
+    expect(backtestParamsSchema.safeParse({ symbols: ['ETHUSDT'], period: '7d', leverage: 0, baseCapital: 100 }).success).toBe(false)
+    expect(backtestParamsSchema.safeParse({ symbols: ['ETHUSDT'], period: '7d', leverage: 5, baseCapital: 0 }).success).toBe(false)
   })
 })
 
