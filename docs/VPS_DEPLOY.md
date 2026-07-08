@@ -41,6 +41,27 @@ cd /opt/bottrade
 bash scripts/deploy-vps.sh
 ```
 
+## Updates with Infisical
+
+Use this flow after adding production secrets to Infisical and creating a read-only token for the VPS:
+
+```bash
+cd /opt/bottrade
+export INFISICAL_TOKEN=REPLACE_WITH_MACHINE_IDENTITY_OR_SERVICE_TOKEN
+export INFISICAL_PROJECT_ID=REPLACE_WITH_PROJECT_ID
+export INFISICAL_ENV=prod
+bash scripts/deploy-vps-infisical.sh
+```
+
+To also start Grafana Alloy log forwarding, include:
+
+```bash
+export ENABLE_OBSERVABILITY=true
+bash scripts/deploy-vps-infisical.sh
+```
+
+The script writes `.env.production` from Infisical with `chmod 600`, then runs Docker Compose with the same production compose file used by the manual deploy.
+
 ## Existing Docker Reverse Proxy
 
 If another Docker project already owns ports `80` and `443`, do not run `scripts/install-cert.sh`.

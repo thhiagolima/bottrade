@@ -1,3 +1,5 @@
+import './instrument.js'
+import * as Sentry from '@sentry/node'
 import logger from './logger.js'
 import express from 'express'
 import helmet from 'helmet'
@@ -1994,6 +1996,8 @@ async function main(): Promise<void> {
   })
 
   // ── Start ────────────────────────────────────────────────────────────────
+
+  Sentry.setupExpressErrorHandler(app)
 
   httpServer.listen(config.port, () => {
     logger.info({ port: config.port, clientOrigin: config.clientOrigin, pairs: favoritePairs, interval: config.candles.interval }, 'Server started')
